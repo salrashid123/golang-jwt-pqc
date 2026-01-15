@@ -5,20 +5,30 @@ import (
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"log"
 	"os"
 	"time"
 
-	"github.com/cloudflare/circl/pki"
 	"github.com/cloudflare/circl/sign/mldsa/mldsa44"
 	"github.com/cloudflare/circl/sign/mldsa/mldsa65"
 	jwt "github.com/golang-jwt/jwt/v5"
 	jwtsigner "github.com/salrashid123/golang-jwt-pqc"
-	circlsigner "github.com/salrashid123/golang-jwt-pqc/circl"
+	gcpkmssigner "github.com/salrashid123/golang-jwt-pqc/gcpkms"
 )
 
-var ()
+/*
+to use your must bootstrap application default credentials with access to the kms key
+
+gcloud auth application-default login
+
+export GOOGLE_APPLICATION_CREDENTIALS=/path/to/svc-account.json
+*/
+
+var (
+	projectID = "core-eso"
+)
 
 func main() {
 
@@ -26,66 +36,24 @@ func main() {
 
 	// load existing public/private keys
 
-	pubKeyPEMBytes, err := os.ReadFile("certs/ml-dsa-44-public.pem")
-	if err != nil {
-		log.Fatalf("%v", err)
-	}
-
-	// read the public key
-	pu, err := pki.UnmarshalPEMPublicKey(pubKeyPEMBytes)
-	if err != nil {
-		log.Fatalf("%v", err)
-	}
-
-	privKeyPEMBytes, err := os.ReadFile("certs/bare_seed/ml-dsa-44-private.pem")
-	if err != nil {
-		log.Fatalf("%v", err)
-	}
-
-	// privPEMblock, rest := pem.Decode(privKeyPEMBytes)
-	// if len(rest) != 0 {
-	// 	fmt.Printf("trailing data found during pemDecode")
-	// 	return
-	// }
-	// var rprkix jwtsigner.PrivateKeyInfo
-	// if rest, err := asn1.Unmarshal(privPEMblock.Bytes, &rprkix); err != nil {
-	// 	fmt.Printf("error unmarshalling private key %v\n", err)
-	// 	return
-	// } else if len(rest) != 0 {
-	// 	fmt.Printf("rest not nil")
-	// 	return
-	// }
-
-	// var pr sign.PrivateKey
-	// if rprkix.PrivateKeyAlgorithm.Algorithm.Equal(jwtsigner.ML_DSA_44_OID) {
-	// 	fmt.Println("Found  MLDSA-44  in private key")
-	// 	_, pr = mldsa44.NewKeyFromSeed((*[32]byte)(rprkix.PrivateKey))
-	// }
-
-	// create a JWT
-
-	pr, err := circlsigner.GetCIRCLPrivateKeyFromBareSeed(privKeyPEMBytes)
-	if err != nil {
-		log.Fatalf("%v", err)
-	}
 	// issue the jwt
 	claims := &jwt.RegisteredClaims{
 		ExpiresAt: &jwt.NumericDate{time.Now().Add(time.Minute * 1)},
 		Issuer:    "test",
 	}
 
-	token := jwt.NewWithClaims(jwtsigner.SigningMethodMLDSA44, claims)
+	token := jwt.NewWithClaims(jwtsigner.SigningMethodMLDSA65, claims)
 
 	keyctx, err := jwtsigner.NewSignerContext(ctx, &jwtsigner.SignerConfig{
-		Signer: &circlsigner.CIRCL{
-			PrivateKey: pr,
+		Signer: &gcpkmssigner.GCPKMS{
+			PrivateKey: fmt.Sprintf("projects/%s/locations/us-central1/keyRings/tkr1/cryptoKeys/mldsa1/cryptoKeyVersions/1", projectID),
 		},
 	})
 	if err != nil {
 		log.Fatalf("Unable to initialize signer: %v", err)
 	}
 
-	token.Header["kid"] = "keyid_1"
+	token.Header["kid"] = "keyid_4"
 
 	tokenString, err := token.SignedString(keyctx)
 	if err != nil {
@@ -93,15 +61,45 @@ func main() {
 	}
 	log.Printf("TOKEN: %s\n", tokenString)
 
-	// // // verify with  publickey
+	// // // verify with embedded publickey
+
+	pubKeyPEMBytes, err := os.ReadFile("../example/certs/ml-dsa-65-public-gcpkms.pem")
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+
+	r, err := jwtsigner.GetSubjectPublicKeyInfoFromPEM(pubKeyPEMBytes)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+	// pubPEMblock, rest := pem.Decode(pubKeyPEMBytes)
+	// if len(rest) != 0 {
+	// 	log.Fatalf("%v", err)
+	// }
+
+	// var si jwtsigner.SubjectPublicKeyInfo
+
+	// _, err = asn1.Unmarshal(pubPEMblock.Bytes, &si)
+	// if err != nil {
+	// 	log.Fatalf("%v", err)
+	// }
+
+	// r := jwtsigner.SubjectPublicKeyInfo{
+	// 	Algorithm: pkix.AlgorithmIdentifier{
+	// 		Algorithm: si.Algorithm.Algorithm,
+	// 	},
+	// 	PublicKey: asn1.BitString{
+	// 		Bytes: si.PublicKey.Bytes,
+	// 	},
+	// }
 
 	nkeyctx, err := jwtsigner.NewSignerContext(ctx, &jwtsigner.SignerConfig{})
 	if err != nil {
 		log.Fatalf("Unable to initialize signer: %v", err)
 	}
 	keyFunc, err := jwtsigner.SignerVerfiyKeyfunc(nkeyctx, &jwtsigner.SignerConfig{
-		Signer: &circlsigner.CIRCL{
-			PublicKey: pu,
+		Signer: &gcpkmssigner.GCPKMS{
+			PublicKey: r,
 		},
 	})
 	if err != nil {
@@ -116,22 +114,28 @@ func main() {
 		log.Println("verified with Signer PublicKey")
 	}
 
-	// ***********************************************************************************
-	// now verify the same thing with a keyfunc
+	// //
 
 	v, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 
-		pk, err := pu.MarshalBinary()
+		var si jwtsigner.SubjectPublicKeyInfo
+
+		pubPEMblock, rest := pem.Decode(pubKeyPEMBytes)
+		if len(rest) != 0 {
+			log.Fatalf("%v", err)
+		}
+
+		_, err = asn1.Unmarshal(pubPEMblock.Bytes, &si)
 		if err != nil {
-			return nil, err
+			log.Fatalf("%v", err)
 		}
 
 		r := jwtsigner.SubjectPublicKeyInfo{
 			Algorithm: pkix.AlgorithmIdentifier{
-				Algorithm: jwtsigner.ML_DSA_44_OID,
+				Algorithm: si.Algorithm.Algorithm,
 			},
 			PublicKey: asn1.BitString{
-				Bytes: pk,
+				Bytes: si.PublicKey.Bytes,
 			},
 		}
 
@@ -144,9 +148,8 @@ func main() {
 		log.Println("verified with PubicKey")
 	}
 
-	// ***********************************************************************************
+	// use a JWK json as keyfunc
 
-	// finally verify with a JWK file
 	vr, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		kidInter, ok := token.Header["kid"]
 		if !ok {
@@ -190,11 +193,14 @@ func main() {
 					}, nil
 
 				case mldsa65.Scheme().Name():
-					pu, err := mldsa65.Scheme().UnmarshalBinaryPublicKey(k.Pub)
-					if err != nil {
-						return nil, fmt.Errorf("%w: error UnmarshalBinaryPublicKey ", err)
-					}
-					return pu, nil
+					return jwtsigner.SubjectPublicKeyInfo{
+						Algorithm: pkix.AlgorithmIdentifier{
+							Algorithm: jwtsigner.ML_DSA_65_OID,
+						},
+						PublicKey: asn1.BitString{
+							Bytes: k.Pub,
+						},
+					}, nil
 				default:
 					return nil, fmt.Errorf("error unsupported key alg: %s", k.Alg)
 				}

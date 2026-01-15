@@ -1,18 +1,20 @@
 package main
 
 import (
-	"crypto/sha256"
-	"encoding/base64"
+	"crypto/x509/pkix"
+	"encoding/asn1"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"log"
 	"os"
 
-	"github.com/cloudflare/circl/pki"
 	jwtpq "github.com/salrashid123/golang-jwt-pqc"
 )
 
-var ()
+var (
+	keyid = "keyid_1"
+)
 
 func main() {
 
@@ -33,34 +35,59 @@ func main() {
 		log.Fatalf("%v", err)
 	}
 
-	pu, err := pki.UnmarshalPEMPublicKey(pubKeyPEMBytes)
+	// read the key using circl
+	// pu, err := pki.UnmarshalPEMPublicKey(pubKeyPEMBytes)
+	// if err != nil {
+	// 	log.Fatalf("%v", err)
+	// }
+
+	// pubin, err := pu.MarshalBinary()
+	// if err != nil {
+	// 	log.Fatalf("%v", err)
+	// }
+
+	// or marshal it directly
+
+	pubPEMblock, rest := pem.Decode(pubKeyPEMBytes)
+	if len(rest) != 0 {
+		log.Fatalf("%v", err)
+	}
+
+	var si jwtpq.SubjectPublicKeyInfo
+
+	_, err = asn1.Unmarshal(pubPEMblock.Bytes, &si)
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
 
-	pubin, err := pu.MarshalBinary()
-	if err != nil {
-		log.Fatalf("%v", err)
+	r := jwtpq.SubjectPublicKeyInfo{
+		Algorithm: pkix.AlgorithmIdentifier{
+			Algorithm: si.Algorithm.Algorithm,
+		},
+		PublicKey: asn1.BitString{
+			Bytes: si.PublicKey.Bytes,
+		},
 	}
-
-	k := fmt.Sprintf(`{"alg":"%s","kty":"%s","pub":"%s"}`, "ML-DSA-44", "ML-DSA", base64.URLEncoding.EncodeToString(pubin))
-	hash := sha256.Sum256([]byte(k))
-	kid := base64.StdEncoding.EncodeToString(hash[:])
 
 	ks := &jwtpq.JSONWebKeySet{
 		Keys: []jwtpq.JSONWebKey{{
 			Kty: "ML-DSA",
 			Alg: "ML-DSA-44",
-			Kid: kid,
-			Pub: pubin,
+			Kid: keyid,
+			Pub: r.PublicKey.Bytes,
 		},
 		},
 	}
 
-	jsonData, err := json.Marshal(ks)
+	// j, err := json.Marshal(ks)
+	// if err != nil {
+	// 	log.Fatalf("%v", err)
+	// }
+
+	jsonData, err := json.MarshalIndent(ks, "  ", "  ")
 	if err != nil {
-		log.Fatalf("%v", err)
+		log.Fatal("Error marshalling JSON:", err)
 	}
-	jsonString := string(jsonData)
-	fmt.Println(jsonString)
+
+	fmt.Println(string(jsonData))
 }
