@@ -1,8 +1,10 @@
 package main
 
 import (
+	"crypto/sha256"
 	"crypto/x509/pkix"
 	"encoding/asn1"
+	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
@@ -18,33 +20,10 @@ var (
 
 func main() {
 
-	//ctx := context.Background()
-
-	// privKeyPEMBytes, err := os.ReadFile("certs/ml-dsa-44-private.pem")
-	// if err != nil {
-	// 	log.Fatalf("%v", err)
-	// }
-
-	// pr, err := pki.UnmarshalPEMPrivateKey(privKeyPEMBytes)
-	// if err != nil {
-	// 	log.Fatalf("%v", err)
-	// }
-
 	pubKeyPEMBytes, err := os.ReadFile("certs/ml-dsa-44-public.pem")
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
-
-	// read the key using circl
-	// pu, err := pki.UnmarshalPEMPublicKey(pubKeyPEMBytes)
-	// if err != nil {
-	// 	log.Fatalf("%v", err)
-	// }
-
-	// pubin, err := pu.MarshalBinary()
-	// if err != nil {
-	// 	log.Fatalf("%v", err)
-	// }
 
 	// or marshal it directly
 
@@ -69,20 +48,23 @@ func main() {
 		},
 	}
 
+	// https://datatracker.ietf.org/doc/draft-ietf-cose-dilithium/
+	pub64 := base64.URLEncoding.EncodeToString(r.PublicKey.Bytes)
+	canonicalJSON := fmt.Sprintf("{\"kty\":\"AKP\",\"alg\":\"ML_DSA-44\",\"pub\":\"%s\"}", pub64)
+	h := sha256.New()
+	h.Write([]byte(canonicalJSON))
+	keyid := base64.RawStdEncoding.EncodeToString(h.Sum(nil))
+	fmt.Printf("urn:ietf:params:oauth:jwk-thumbprint:sha-256:%s\n", keyid)
+
 	ks := &jwtpq.JSONWebKeySet{
 		Keys: []jwtpq.JSONWebKey{{
-			Kty: "ML-DSA",
+			Kty: "AKP",
 			Alg: "ML-DSA-44",
 			Kid: keyid,
 			Pub: r.PublicKey.Bytes,
 		},
 		},
 	}
-
-	// j, err := json.Marshal(ks)
-	// if err != nil {
-	// 	log.Fatalf("%v", err)
-	// }
 
 	jsonData, err := json.MarshalIndent(ks, "  ", "  ")
 	if err != nil {

@@ -1,9 +1,8 @@
-package gcpkms
+package awskms
 
 import (
 	"context"
 	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -19,20 +18,19 @@ var ()
 
 func TestKMSDSA65(t *testing.T) {
 
-	saJSON := os.Getenv("CICD_SA_JSON")
+	access_key_id := os.Getenv("CICD_AWS_ACCESS_KEY")
+	access_secret_id := os.Getenv("CICD_AWS_ACCESS_SECRET")
+	aws_region := os.Getenv("CICD_AWS_REGION")
 
-	tempDir := t.TempDir()
-	filePath := filepath.Join(tempDir, "cert.json")
+	os.Setenv("AWS_ACCESS_KEY", access_key_id)
+	os.Setenv("AWS_ACCESS_SECRET", access_secret_id)
 
-	err := os.WriteFile(filePath, []byte(saJSON), 0644)
-	require.NoError(t, err)
+	keyID := "37aca4ea-3915-441f-b03d-d90bad1eb45a"
+	region := aws_region
 
-	os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", filePath)
-
-	kmsURI := "projects/core-eso/locations/us-central1/keyRings/tkr1/cryptoKeys/mldsa1/cryptoKeyVersions/1"
 	// demo signer
 
-	publicPEM, err := os.ReadFile("../example/certs/ml-dsa-65-public-gcpkms.pem")
+	publicPEM, err := os.ReadFile("../example/certs/ml-dsa-65-public-awskms.pem")
 	require.NoError(t, err)
 
 	pu, err := jwtsigner.GetSubjectPublicKeyInfoFromPEM(publicPEM)
@@ -48,8 +46,9 @@ func TestKMSDSA65(t *testing.T) {
 	token := jwt.NewWithClaims(jwtsigner.SigningMethodMLDSA87, claims)
 
 	keyctx, err := jwtsigner.NewSignerContext(ctx, &jwtsigner.SignerConfig{
-		Signer: &GCPKMS{
-			PrivateKey: kmsURI,
+		Signer: &AWSKMS{
+			KeyID:  keyID,
+			Region: region,
 		},
 	})
 	require.NoError(t, err)
@@ -57,11 +56,14 @@ func TestKMSDSA65(t *testing.T) {
 	tokenString, err := token.SignedString(keyctx)
 	require.NoError(t, err)
 
-	keyFunc, err := jwtsigner.SignerVerfiyKeyfunc(context.Background(), &jwtsigner.SignerConfig{
-		Signer: &GCPKMS{
+	verifierctx, err := jwtsigner.NewSignerContext(ctx, &jwtsigner.SignerConfig{
+		Signer: &AWSKMS{
 			PublicKey: pu,
 		},
 	})
+	require.NoError(t, err)
+
+	keyFunc, err := jwtsigner.SignerVerfiyKeyfunc(verifierctx)
 	require.NoError(t, err)
 
 	vtoken, err := jwt.Parse(tokenString, keyFunc)

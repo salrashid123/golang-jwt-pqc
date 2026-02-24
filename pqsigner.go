@@ -7,9 +7,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/cloudflare/circl/sign/mldsa/mldsa44"
-	"github.com/cloudflare/circl/sign/mldsa/mldsa65"
-	"github.com/cloudflare/circl/sign/mldsa/mldsa87"
+	//"crypto/mldsa"
+	mldsa "filippo.io/mldsa"
+
 	jwt "github.com/golang-jwt/jwt/v5"
 )
 
@@ -18,13 +18,14 @@ const (
 	SLHDSA = "SLH-DSA"
 )
 
+// JWTSigner one of jwtpwc.MLDSA or jwtpqc.GCPKMS
 type JWTSigner interface {
 	jwt.SigningMethod
 	GetPublicKey() (SubjectPublicKeyInfo, error)
 }
 
 type SignerConfig struct {
-	Signer JWTSigner
+	Signer JWTSigner // JWTSigner one of jwtpwc.MLDSA or jwtpqc.GCPKMS
 }
 
 type SigningMethodPQ struct {
@@ -79,9 +80,13 @@ func SignerFromContext(ctx context.Context) (*SignerConfig, bool) {
 	return val, ok
 }
 
-func SignerVerfiyKeyfunc(ctx context.Context, config *SignerConfig) (jwt.Keyfunc, error) {
+func SignerVerfiyKeyfunc(ctx context.Context) (jwt.Keyfunc, error) {
+	sctxo, ok := SignerFromContext(ctx)
+	if !ok {
+		return nil, errors.New("golang-jwt-pqc: error getting signer context for verification")
+	}
 	return func(token *jwt.Token) (interface{}, error) {
-		return config.Signer.GetPublicKey()
+		return sctxo.Signer.GetPublicKey()
 	}, nil
 }
 
@@ -109,44 +114,32 @@ func (s *SigningMethodPQ) Alg() string {
 func (s *SigningMethodPQ) Verify(signingString string, signature []byte, key interface{}) error {
 	switch k := key.(type) {
 	case SubjectPublicKeyInfo:
-		if k.Algorithm.Algorithm.Equal(ML_DSA_44_OID) {
-			pub, err := mldsa44.Scheme().UnmarshalBinaryPublicKey(k.PublicKey.Bytes)
+		if k.Algorithm.Algorithm.Equal(OidMLDSA44) {
+			pub, err := mldsa.NewPublicKey(mldsa.MLDSA44(), k.PublicKey.Bytes)
 			if err != nil {
 				return err
 			}
-			mpub, ok := pub.(*mldsa44.PublicKey)
-			if !ok {
-				return errors.New("golang-jwt-pqc: error casting mldsa publci key")
-			}
-			vok := mldsa44.Verify(mpub, []byte(signingString), nil, signature)
-			if !vok {
+			err = mldsa.Verify(pub, []byte(signingString), signature, nil)
+			if err != nil {
 				return errors.New("golang-jwt-pqc: Error verifying mldsa44 signature")
 			}
-		} else if k.Algorithm.Algorithm.Equal(ML_DSA_65_OID) {
-			pub, err := mldsa65.Scheme().UnmarshalBinaryPublicKey(k.PublicKey.Bytes)
+		} else if k.Algorithm.Algorithm.Equal(OidMLDSA65) {
+			pub, err := mldsa.NewPublicKey(mldsa.MLDSA65(), k.PublicKey.Bytes)
 			if err != nil {
 				return err
 			}
-			mpub, ok := pub.(*mldsa65.PublicKey)
-			if !ok {
-				return errors.New("golang-jwt-pqc: error casting mldsa public key")
+			err = mldsa.Verify(pub, []byte(signingString), signature, nil)
+			if err != nil {
+				return errors.New("golang-jwt-pqc: Error verifying mldsa44 signature")
 			}
-			vok := mldsa65.Verify(mpub, []byte(signingString), nil, signature)
-			if !vok {
-				return errors.New("golang-jwt-pqc: Error verifying mldsa65 signature")
-			}
-		} else if k.Algorithm.Algorithm.Equal(ML_DSA_87_OID) {
-			pub, err := mldsa87.Scheme().UnmarshalBinaryPublicKey(k.PublicKey.Bytes)
+		} else if k.Algorithm.Algorithm.Equal(OidMLDSA87) {
+			pub, err := mldsa.NewPublicKey(mldsa.MLDSA87(), k.PublicKey.Bytes)
 			if err != nil {
 				return err
 			}
-			mpub, ok := pub.(*mldsa87.PublicKey)
-			if !ok {
-				return errors.New("golang-jwt-pqc: error casting mldsa public key")
-			}
-			vok := mldsa87.Verify(mpub, []byte(signingString), nil, signature)
-			if !vok {
-				return errors.New("golang-jwt-pqc: Error verifying mldsa87 signature")
+			err = mldsa.Verify(pub, []byte(signingString), signature, nil)
+			if err != nil {
+				return errors.New("golang-jwt-pqc: Error verifying mldsa44 signature")
 			}
 		} else {
 			return fmt.Errorf("golang-jwt-pqc: Error unsupported scheme %v", k.Algorithm.Algorithm)
@@ -175,7 +168,7 @@ func GetSubjectPublicKeyInfoFromPEM(in []byte) (SubjectPublicKeyInfo, error) {
 		return SubjectPublicKeyInfo{}, fmt.Errorf("Error unmarshalling pem key %v", err)
 	}
 
-	if !(si.Algorithm.Algorithm.Equal(ML_DSA_44_OID) || si.Algorithm.Algorithm.Equal(ML_DSA_65_OID) || si.Algorithm.Algorithm.Equal(ML_DSA_87_OID)) {
+	if !(si.Algorithm.Algorithm.Equal(OidMLDSA44) || si.Algorithm.Algorithm.Equal(OidMLDSA65) || si.Algorithm.Algorithm.Equal(OidMLDSA87)) {
 		return SubjectPublicKeyInfo{}, fmt.Errorf("unsupported algorithm %s\n", si.Algorithm.Algorithm)
 	}
 
@@ -183,7 +176,7 @@ func GetSubjectPublicKeyInfoFromPEM(in []byte) (SubjectPublicKeyInfo, error) {
 
 }
 
-func GetSubjectPrivateKeyInfoFromPEM(in []byte) (PrivateKeyInfo, error) {
+func GetPrivateKeyInfoFromPEM(in []byte) (PrivateKeyInfo, error) {
 
 	pubPEMblock, rest := pem.Decode(in)
 	if len(rest) != 0 {
@@ -197,7 +190,7 @@ func GetSubjectPrivateKeyInfoFromPEM(in []byte) (PrivateKeyInfo, error) {
 		return PrivateKeyInfo{}, fmt.Errorf("Error unmarshalling pem key %v", err)
 	}
 
-	if !(si.PrivateKeyAlgorithm.Algorithm.Equal(ML_DSA_44_OID) || si.PrivateKeyAlgorithm.Algorithm.Equal(ML_DSA_65_OID) || si.PrivateKeyAlgorithm.Algorithm.Equal(ML_DSA_87_OID)) {
+	if !(si.PrivateKeyAlgorithm.Algorithm.Equal(OidMLDSA44) || si.PrivateKeyAlgorithm.Algorithm.Equal(OidMLDSA65) || si.PrivateKeyAlgorithm.Algorithm.Equal(OidMLDSA87)) {
 		return PrivateKeyInfo{}, fmt.Errorf("unsupported algorithm %s\n", si.PrivateKeyAlgorithm.Algorithm)
 	}
 

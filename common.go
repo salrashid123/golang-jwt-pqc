@@ -56,7 +56,7 @@ type SubjectPublicKeyInfo struct {
 }
 
 var (
-	ML_DSA_44_OID = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 3, 17}
-	ML_DSA_65_OID = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 3, 18}
-	ML_DSA_87_OID = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 3, 19}
+	OidMLDSA44 = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 3, 17}
+	OidMLDSA65 = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 3, 18}
+	OidMLDSA87 = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 3, 19}
 )

@@ -4,15 +4,12 @@ import (
 	"context"
 	"crypto/x509/pkix"
 	"encoding/asn1"
-	"encoding/json"
 	"encoding/pem"
-	"fmt"
+	"flag"
 	"log"
 	"os"
 	"time"
 
-	"github.com/cloudflare/circl/sign/mldsa/mldsa44"
-	"github.com/cloudflare/circl/sign/mldsa/mldsa65"
 	jwt "github.com/golang-jwt/jwt/v5"
 	jwtsigner "github.com/salrashid123/golang-jwt-pqc"
 	gcpkmssigner "github.com/salrashid123/golang-jwt-pqc/gcpkms"
@@ -28,9 +25,12 @@ export GOOGLE_APPLICATION_CREDENTIALS=/path/to/svc-account.json
 
 var (
 	projectID = "core-eso"
+	kmsURI    = flag.String("kmsURI", "projects/core-eso/locations/us-central1/keyRings/tkr1/cryptoKeys/mldsa1/cryptoKeyVersions/1", "kms key uri")
 )
 
 func main() {
+
+	flag.Parse()
 
 	ctx := context.Background()
 
@@ -46,7 +46,7 @@ func main() {
 
 	keyctx, err := jwtsigner.NewSignerContext(ctx, &jwtsigner.SignerConfig{
 		Signer: &gcpkmssigner.GCPKMS{
-			PrivateKey: fmt.Sprintf("projects/%s/locations/us-central1/keyRings/tkr1/cryptoKeys/mldsa1/cryptoKeyVersions/1", projectID),
+			KMSURI: *kmsURI,
 		},
 	})
 	if err != nil {
@@ -54,6 +54,7 @@ func main() {
 	}
 
 	token.Header["kid"] = "keyid_4"
+	token.Header["kty"] = "AKP"
 
 	tokenString, err := token.SignedString(keyctx)
 	if err != nil {
@@ -93,15 +94,20 @@ func main() {
 	// 	},
 	// }
 
-	nkeyctx, err := jwtsigner.NewSignerContext(ctx, &jwtsigner.SignerConfig{})
+	// creds, err := google.FindDefaultCredentials(context.TODO())
+	// if err != nil {
+	// 	log.Fatalf("%v", err)
+	// }
+	verifierctx, err := jwtsigner.NewSignerContext(ctx, &jwtsigner.SignerConfig{
+		Signer: &gcpkmssigner.GCPKMS{
+			PublicKey: r,
+			//Credentials: creds,
+		},
+	})
 	if err != nil {
 		log.Fatalf("Unable to initialize signer: %v", err)
 	}
-	keyFunc, err := jwtsigner.SignerVerfiyKeyfunc(nkeyctx, &jwtsigner.SignerConfig{
-		Signer: &gcpkmssigner.GCPKMS{
-			PublicKey: r,
-		},
-	})
+	keyFunc, err := jwtsigner.SignerVerfiyKeyfunc(verifierctx)
 	if err != nil {
 		log.Fatalf("could not get keyFunc: %v", err)
 	}
@@ -146,73 +152,6 @@ func main() {
 	}
 	if v.Valid {
 		log.Println("verified with PubicKey")
-	}
-
-	// use a JWK json as keyfunc
-
-	vr, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		kidInter, ok := token.Header["kid"]
-		if !ok {
-			return nil, fmt.Errorf("could not find kid in JWT header")
-		}
-		kid, ok := kidInter.(string)
-		if !ok {
-			return nil, fmt.Errorf("could not convert kid in JWT header to string")
-		}
-
-		// read from a file; you can read from a JWK url too
-		jwkBytes, err := os.ReadFile("certs/jwk.json")
-		if err != nil {
-			return nil, fmt.Errorf("%w: error reading jwk", err)
-		}
-
-		// find the key by keyid
-		var keyset jwtsigner.JSONWebKeySet
-		if err := json.Unmarshal(jwkBytes, &keyset); err != nil {
-			return nil, fmt.Errorf("%w: error Unmarshal keyset", err)
-		}
-
-		// unmarshal the binary forward
-		for _, k := range keyset.Keys {
-			if k.Kid == kid {
-				switch k.Alg {
-				case mldsa44.Scheme().Name():
-					// pu, err := mldsa44.Scheme().UnmarshalBinaryPublicKey(k.Pub)
-					// if err != nil {
-					// 	return nil, fmt.Errorf("%w: error UnmarshalBinaryPublicKey ", err)
-					// }
-					// return pu, nil
-
-					return jwtsigner.SubjectPublicKeyInfo{
-						Algorithm: pkix.AlgorithmIdentifier{
-							Algorithm: jwtsigner.ML_DSA_44_OID,
-						},
-						PublicKey: asn1.BitString{
-							Bytes: k.Pub,
-						},
-					}, nil
-
-				case mldsa65.Scheme().Name():
-					return jwtsigner.SubjectPublicKeyInfo{
-						Algorithm: pkix.AlgorithmIdentifier{
-							Algorithm: jwtsigner.ML_DSA_65_OID,
-						},
-						PublicKey: asn1.BitString{
-							Bytes: k.Pub,
-						},
-					}, nil
-				default:
-					return nil, fmt.Errorf("error unsupported key alg: %s", k.Alg)
-				}
-			}
-		}
-		return nil, fmt.Errorf("keyset not found for key %s", kid)
-	})
-	if err != nil {
-		log.Fatalf("Error parsing token %v", err)
-	}
-	if vr.Valid {
-		log.Println("verified with JWK KeyFunc URL")
 	}
 
 }

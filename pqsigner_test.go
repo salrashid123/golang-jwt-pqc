@@ -26,15 +26,15 @@ func TestGetSubjectPublicKeyInfoFromPEM(t *testing.T) {
 	r, err := GetSubjectPublicKeyInfoFromPEM(pubKeyPEMBytes)
 	require.NoError(t, err)
 
-	require.True(t, r.Algorithm.Algorithm.Equal(ML_DSA_65_OID))
+	require.True(t, r.Algorithm.Algorithm.Equal(OidMLDSA65))
 }
 
 func TestGetSubjectPrivateKeyInfoFromPEM(t *testing.T) {
 	pubKeyPEMBytes, err := os.ReadFile("example/certs/bare_seed/ml-dsa-65-private.pem")
 	require.NoError(t, err)
 
-	r, err := GetSubjectPrivateKeyInfoFromPEM(pubKeyPEMBytes)
+	r, err := GetPrivateKeyInfoFromPEM(pubKeyPEMBytes)
 	require.NoError(t, err)
 
-	require.True(t, r.PrivateKeyAlgorithm.Algorithm.Equal(ML_DSA_65_OID))
+	require.True(t, r.PrivateKeyAlgorithm.Algorithm.Equal(OidMLDSA65))
 }

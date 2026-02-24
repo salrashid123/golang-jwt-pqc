@@ -9,12 +9,15 @@ import (
 	"cloud.google.com/go/kms/apiv1/kmspb"
 	"github.com/golang-jwt/jwt/v5"
 	jwtsigner "github.com/salrashid123/golang-jwt-pqc"
+	"golang.org/x/oauth2/google"
+	"google.golang.org/api/option"
 )
 
 type GCPKMS struct {
 	jwtsigner.JWTSigner
-	PrivateKey string
-	PublicKey  jwtsigner.SubjectPublicKeyInfo
+	KMSURI      string                         // needed to sign
+	PublicKey   jwtsigner.SubjectPublicKeyInfo // needed for verify
+	Credentials *google.Credentials            // option, otherwise derived from application default credentials
 }
 
 func (s *GCPKMS) Sign(signingString string, key interface{}) ([]byte, error) {
@@ -43,29 +46,44 @@ func (s *GCPKMS) Sign(signingString string, key interface{}) ([]byte, error) {
 		return nil, jwt.ErrInvalidKey
 	}
 
-	if sctx.PrivateKey == "" {
-		return nil, errors.New("golang-jwt-pqc: rivate key must be specified for Sign")
+	if sctx.KMSURI == "" {
+		return nil, errors.New("golang-jwt-pqc: kmsuri must be specified for Sign")
 	}
 
-	kmsClient, err := cloudkms.NewKeyManagementClient(ctx)
+	var creds *google.Credentials
+	if s.Credentials != nil {
+		creds = s.Credentials
+	} else {
+		var err error
+		creds, err = google.FindDefaultCredentials(ctx, cloudkms.DefaultAuthScopes()...)
+		if err != nil {
+			return nil, fmt.Errorf("golang-jwt-pqc: error getting default credentials %v", err)
+		}
+	}
+
+	// rest
+	//kmsClient, err := cloudkms.NewKeyManagementRESTClient(ctx, option.WithCredentials(creds))
+	// grpc
+	kmsClient, err := cloudkms.NewKeyManagementClient(ctx, option.WithCredentials(creds))
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("golang-jwt-pqc: error creating gcp kms client %v", err)
 	}
 	defer kmsClient.Close()
 
 	req := &kmspb.AsymmetricSignRequest{
-		Name: sctx.PrivateKey,
+		Name: sctx.KMSURI,
 		Data: []byte(signingString),
 	}
 	dresp, err := kmsClient.AsymmetricSign(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("golang-jwt-pqc: error signing %v", err)
 	}
+
 	return dresp.Signature, nil
 }
 
 func (k *GCPKMS) GetPublicKey() (jwtsigner.SubjectPublicKeyInfo, error) {
-	if k.PublicKey.Algorithm.Algorithm.Equal(jwtsigner.ML_DSA_44_OID) || k.PublicKey.Algorithm.Algorithm.Equal(jwtsigner.ML_DSA_65_OID) || k.PublicKey.Algorithm.Algorithm.Equal(jwtsigner.ML_DSA_87_OID) {
+	if k.PublicKey.Algorithm.Algorithm.Equal(jwtsigner.OidMLDSA44) || k.PublicKey.Algorithm.Algorithm.Equal(jwtsigner.OidMLDSA65) || k.PublicKey.Algorithm.Algorithm.Equal(jwtsigner.OidMLDSA87) {
 		return k.PublicKey, nil
 	}
 	return jwtsigner.SubjectPublicKeyInfo{}, fmt.Errorf("golang-jwt-pqc: unsupported scheme %v", k.PublicKey.Algorithm.Algorithm)

@@ -21,6 +21,10 @@ jobs:
 
       - name: Run tests
         env:
-          CICD_SA_JSON: ${{ secrets.CICD_SA_JSON }}         
+          CICD_SA_JSON: ${{ secrets.CICD_SA_JSON }}
+          CICD_AWS_ACCESS_KEY: ${{ secrets.CICD_AWS_ACCESS_KEY }}    
+          CICD_AWS_ACCESS_SECRET: ${{ secrets.CICD_AWS_ACCESS_SECRET }} 
+          CICD_AWS_REGION: ${{ secrets.CICD_AWS_REGION }} 
+
         run: go test -v ./...
 
