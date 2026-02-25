@@ -2,9 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/x509/pkix"
-	"encoding/asn1"
-	"encoding/pem"
 	"flag"
 	"log"
 	"os"
@@ -73,26 +70,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
-	// pubPEMblock, rest := pem.Decode(pubKeyPEMBytes)
-	// if len(rest) != 0 {
-	// 	log.Fatalf("%v", err)
-	// }
-
-	// var si jwtsigner.SubjectPublicKeyInfo
-
-	// _, err = asn1.Unmarshal(pubPEMblock.Bytes, &si)
-	// if err != nil {
-	// 	log.Fatalf("%v", err)
-	// }
-
-	// r := jwtsigner.SubjectPublicKeyInfo{
-	// 	Algorithm: pkix.AlgorithmIdentifier{
-	// 		Algorithm: si.Algorithm.Algorithm,
-	// 	},
-	// 	PublicKey: asn1.BitString{
-	// 		Bytes: si.PublicKey.Bytes,
-	// 	},
-	// }
 
 	// creds, err := google.FindDefaultCredentials(context.TODO())
 	// if err != nil {
@@ -123,28 +100,6 @@ func main() {
 	// //
 
 	v, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-
-		var si jwtsigner.SubjectPublicKeyInfo
-
-		pubPEMblock, rest := pem.Decode(pubKeyPEMBytes)
-		if len(rest) != 0 {
-			log.Fatalf("%v", err)
-		}
-
-		_, err = asn1.Unmarshal(pubPEMblock.Bytes, &si)
-		if err != nil {
-			log.Fatalf("%v", err)
-		}
-
-		r := jwtsigner.SubjectPublicKeyInfo{
-			Algorithm: pkix.AlgorithmIdentifier{
-				Algorithm: si.Algorithm.Algorithm,
-			},
-			PublicKey: asn1.BitString{
-				Bytes: si.PublicKey.Bytes,
-			},
-		}
-
 		return r, nil
 	})
 	if err != nil {

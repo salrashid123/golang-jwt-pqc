@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"filippo.io/mldsa"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,7 +27,7 @@ func TestGetSubjectPublicKeyInfoFromPEM(t *testing.T) {
 	r, err := GetSubjectPublicKeyInfoFromPEM(pubKeyPEMBytes)
 	require.NoError(t, err)
 
-	require.True(t, r.Algorithm.Algorithm.Equal(OidMLDSA65))
+	require.Equal(t, r.Parameters(), mldsa.MLDSA65())
 }
 
 func TestGetSubjectPrivateKeyInfoFromPEM(t *testing.T) {
@@ -36,5 +37,5 @@ func TestGetSubjectPrivateKeyInfoFromPEM(t *testing.T) {
 	r, err := GetPrivateKeyInfoFromPEM(pubKeyPEMBytes)
 	require.NoError(t, err)
 
-	require.True(t, r.PrivateKeyAlgorithm.Algorithm.Equal(OidMLDSA65))
+	require.Equal(t, r.PublicKey().Parameters(), mldsa.MLDSA65())
 }

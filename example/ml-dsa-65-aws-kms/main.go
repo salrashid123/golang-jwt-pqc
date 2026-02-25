@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/x509/pkix"
-	"encoding/asn1"
 	"encoding/pem"
 	"flag"
 	"fmt"
@@ -124,7 +122,9 @@ func main() {
 
 	verifierctx, err := jwtsigner.NewSignerContext(ctx, &jwtsigner.SignerConfig{
 		Signer: &awskmssigner.AWSKMS{
-			PublicKey: r,
+			//PublicKey: r,
+			KeyID:  *keyID,
+			Region: *awsRegion,
 		},
 	})
 	if err != nil {
@@ -146,28 +146,6 @@ func main() {
 	// //
 
 	v, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-
-		var si jwtsigner.SubjectPublicKeyInfo
-
-		pubPEMblock, rest := pem.Decode(pubKeyPEMBytes)
-		if len(rest) != 0 {
-			log.Fatalf("%v", err)
-		}
-
-		_, err = asn1.Unmarshal(pubPEMblock.Bytes, &si)
-		if err != nil {
-			log.Fatalf("%v", err)
-		}
-
-		r := jwtsigner.SubjectPublicKeyInfo{
-			Algorithm: pkix.AlgorithmIdentifier{
-				Algorithm: si.Algorithm.Algorithm,
-			},
-			PublicKey: asn1.BitString{
-				Bytes: si.PublicKey.Bytes,
-			},
-		}
-
 		return r, nil
 	})
 	if err != nil {

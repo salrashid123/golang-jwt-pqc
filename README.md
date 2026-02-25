@@ -9,7 +9,7 @@ Specifically, this implements jwt signing with `ML-DSA` using either
 * `AWS KMS`
 
 
-*NOTE* this library internally uses `"filippo.io/mldsa"` as the mlDSA provider which is still under devleopment [https://github.com/golang/go/issues/77626](https://github.com/golang/go/issues/77626).  Eventually when that is merged into standard go  `"crypto/mldsa"`, i'll swap the implementation
+>> *NOTE* this library internally uses `"filippo.io/mldsa"` as the mlDSA provider which is still under devleopment [https://github.com/golang/go/issues/77626](https://github.com/golang/go/issues/77626).  Eventually when that is merged into standard go  `"crypto/mldsa"`, i'll swap the implementation.  Please note that will be a breaking change since it will migrate the return function parameters from `"filippo.io/mldsa"` --> `crypto/mldsa`
 
 A sample JWT generated is in the form:
 
@@ -94,9 +94,7 @@ If you want a quickstart to using option (1) see the `examples/` folder
 
 ```golang
 	privKeyPEMBytes, err := os.ReadFile("certs/bare_seed/ml-dsa-44-private.pem")
-	priS, err := jwtsigner.GetPrivateKeyInfoFromPEM(privKeyPEMBytes)
-
-	privateKey, err := mldsa.NewPrivateKey(mldsa.MLDSA44(), priS.PrivateKey)
+	privateKey, err := jwtsigner.GetPrivateKeyInfoFromPEM(privKeyPEMBytes)
 
 	claims := &jwt.RegisteredClaims{
 		ExpiresAt: &jwt.NumericDate{time.Now().Add(time.Minute * 1)},
@@ -121,8 +119,7 @@ If you want a quickstart to using option (1) see the `examples/` folder
 
 ```golang
 	pubKeyPEMBytes, err := os.ReadFile("certs/ml-dsa-44-public.pem")
-	pubS, err := jwtsigner.GetSubjectPublicKeyInfoFromPEM(pubKeyPEMBytes)
-	publicKey, err := mldsa.NewPublicKey(mldsa.MLDSA44(), pubS.PublicKey.Bytes)
+	publicKey, err := jwtsigner.GetSubjectPublicKeyInfoFromPEM(pubKeyPEMBytes)
 
 	verifierctx, err := jwtsigner.NewSignerContext(ctx, &jwtsigner.SignerConfig{
 		Signer: &mldsasigner.MLDSA{

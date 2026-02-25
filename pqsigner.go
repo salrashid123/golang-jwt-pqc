@@ -21,7 +21,7 @@ const (
 // JWTSigner one of jwtpwc.MLDSA or jwtpqc.GCPKMS
 type JWTSigner interface {
 	jwt.SigningMethod
-	GetPublicKey() (SubjectPublicKeyInfo, error)
+	GetPublicKey() (*mldsa.PublicKey, error)
 }
 
 type SignerConfig struct {
@@ -39,7 +39,6 @@ var (
 	SigningMethodMLDSA44 *SigningMethodPQ
 	SigningMethodMLDSA65 *SigningMethodPQ
 	SigningMethodMLDSA87 *SigningMethodPQ
-	errMissingConfig     = errors.New("signer: missing configuration in provided context")
 )
 
 func init() {
@@ -112,88 +111,77 @@ func (s *SigningMethodPQ) Alg() string {
 }
 
 func (s *SigningMethodPQ) Verify(signingString string, signature []byte, key interface{}) error {
-	switch k := key.(type) {
-	case SubjectPublicKeyInfo:
-		if k.Algorithm.Algorithm.Equal(OidMLDSA44) {
-			pub, err := mldsa.NewPublicKey(mldsa.MLDSA44(), k.PublicKey.Bytes)
-			if err != nil {
-				return err
-			}
-			err = mldsa.Verify(pub, []byte(signingString), signature, nil)
-			if err != nil {
-				return errors.New("golang-jwt-pqc: Error verifying mldsa44 signature")
-			}
-		} else if k.Algorithm.Algorithm.Equal(OidMLDSA65) {
-			pub, err := mldsa.NewPublicKey(mldsa.MLDSA65(), k.PublicKey.Bytes)
-			if err != nil {
-				return err
-			}
-			err = mldsa.Verify(pub, []byte(signingString), signature, nil)
-			if err != nil {
-				return errors.New("golang-jwt-pqc: Error verifying mldsa44 signature")
-			}
-		} else if k.Algorithm.Algorithm.Equal(OidMLDSA87) {
-			pub, err := mldsa.NewPublicKey(mldsa.MLDSA87(), k.PublicKey.Bytes)
-			if err != nil {
-				return err
-			}
-			err = mldsa.Verify(pub, []byte(signingString), signature, nil)
-			if err != nil {
-				return errors.New("golang-jwt-pqc: Error verifying mldsa44 signature")
-			}
-		} else {
-			return fmt.Errorf("golang-jwt-pqc: Error unsupported scheme %v", k.Algorithm.Algorithm)
-		}
-		return nil
-	default:
-		return errors.New("golang-jwt-pqc: invalid key context")
+	p, ok := key.(*mldsa.PublicKey)
+	if !ok {
+		return fmt.Errorf("golang-jwt-pqc: Error unsupported key %T", key)
 	}
+	return mldsa.Verify(p, []byte(signingString), signature, nil)
 }
 
-func (k *SignerConfig) GetPublicKey() (SubjectPublicKeyInfo, error) {
+func (k *SignerConfig) PublicKey() (*mldsa.PublicKey, error) {
 	return k.Signer.GetPublicKey()
 }
 
-func GetSubjectPublicKeyInfoFromPEM(in []byte) (SubjectPublicKeyInfo, error) {
+func GetSubjectPublicKeyInfoFromPEM(in []byte) (*mldsa.PublicKey, error) {
 
 	pubPEMblock, rest := pem.Decode(in)
 	if len(rest) != 0 {
-		return SubjectPublicKeyInfo{}, fmt.Errorf("trailing data found during pemDecode")
+		return &mldsa.PublicKey{}, fmt.Errorf("trailing data found during pemDecode")
 	}
 
 	var si SubjectPublicKeyInfo
 
 	_, err := asn1.Unmarshal(pubPEMblock.Bytes, &si)
 	if err != nil {
-		return SubjectPublicKeyInfo{}, fmt.Errorf("Error unmarshalling pem key %v", err)
+		return &mldsa.PublicKey{}, fmt.Errorf("Error unmarshalling pem key %v", err)
 	}
-
-	if !(si.Algorithm.Algorithm.Equal(OidMLDSA44) || si.Algorithm.Algorithm.Equal(OidMLDSA65) || si.Algorithm.Algorithm.Equal(OidMLDSA87)) {
-		return SubjectPublicKeyInfo{}, fmt.Errorf("unsupported algorithm %s\n", si.Algorithm.Algorithm)
+	var params *mldsa.Parameters
+	if si.Algorithm.Algorithm.Equal(OidMLDSA44) {
+		params = mldsa.MLDSA44()
+	} else if si.Algorithm.Algorithm.Equal(OidMLDSA65) {
+		params = mldsa.MLDSA65()
+	} else if si.Algorithm.Algorithm.Equal(OidMLDSA87) {
+		params = mldsa.MLDSA87()
+	} else {
+		return &mldsa.PublicKey{}, fmt.Errorf("unsupported algorithm %s\n", si.Algorithm.Algorithm)
 	}
-
-	return si, nil
+	s, err := mldsa.NewPublicKey(params, si.PublicKey.Bytes)
+	if err != nil {
+		return &mldsa.PublicKey{}, fmt.Errorf("Error recreating public key %v", err)
+	}
+	return s, nil
 
 }
 
-func GetPrivateKeyInfoFromPEM(in []byte) (PrivateKeyInfo, error) {
+func GetPrivateKeyInfoFromPEM(in []byte) (*mldsa.PrivateKey, error) {
 
 	pubPEMblock, rest := pem.Decode(in)
 	if len(rest) != 0 {
-		return PrivateKeyInfo{}, fmt.Errorf("trailing data found during pemDecode")
+		return &mldsa.PrivateKey{}, fmt.Errorf("trailing data found during pemDecode")
 	}
 
 	var si PrivateKeyInfo
 
 	_, err := asn1.Unmarshal(pubPEMblock.Bytes, &si)
 	if err != nil {
-		return PrivateKeyInfo{}, fmt.Errorf("Error unmarshalling pem key %v", err)
+		return &mldsa.PrivateKey{}, fmt.Errorf("Error unmarshalling pem key %v", err)
 	}
 
-	if !(si.PrivateKeyAlgorithm.Algorithm.Equal(OidMLDSA44) || si.PrivateKeyAlgorithm.Algorithm.Equal(OidMLDSA65) || si.PrivateKeyAlgorithm.Algorithm.Equal(OidMLDSA87)) {
-		return PrivateKeyInfo{}, fmt.Errorf("unsupported algorithm %s\n", si.PrivateKeyAlgorithm.Algorithm)
-	}
+	var params *mldsa.Parameters
 
-	return si, nil
+	if si.PrivateKeyAlgorithm.Algorithm.Equal(OidMLDSA44) {
+		params = mldsa.MLDSA44()
+	} else if si.PrivateKeyAlgorithm.Algorithm.Equal(OidMLDSA65) {
+		params = mldsa.MLDSA65()
+	} else if si.PrivateKeyAlgorithm.Algorithm.Equal(OidMLDSA87) {
+		params = mldsa.MLDSA87()
+	} else {
+		return &mldsa.PrivateKey{}, fmt.Errorf("unsupported algorithm %s\n", si.PrivateKeyAlgorithm.Algorithm)
+	}
+	s, err := mldsa.NewPrivateKey(params, si.PrivateKey)
+	if err != nil {
+		return &mldsa.PrivateKey{}, fmt.Errorf("Error recreating private key %v", err)
+	}
+	return s, nil
 
 }

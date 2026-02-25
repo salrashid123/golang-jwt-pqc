@@ -43,10 +43,8 @@ func TestDSA44(t *testing.T) {
 
 	rprkix, err := jwtsigner.GetPrivateKeyInfoFromPEM(privatePEM)
 	require.NoError(t, err)
-	pr, err := mldsa.NewPrivateKey(mldsa.MLDSA44(), rprkix.PrivateKey)
-	require.NoError(t, err)
 
-	pubFromPrivate := pr.PublicKey()
+	pubFromPrivate := rprkix.PublicKey()
 
 	require.True(t, pubFromPrivate.Equal(pubFromFile))
 
@@ -61,7 +59,7 @@ func TestDSA44(t *testing.T) {
 
 	keyctx, err := jwtsigner.NewSignerContext(ctx, &jwtsigner.SignerConfig{
 		Signer: &MLDSA{
-			PrivateKey: pr,
+			PrivateKey: rprkix,
 		},
 	})
 	require.NoError(t, err)
@@ -103,10 +101,8 @@ func TestDSA65(t *testing.T) {
 
 	rprkix, err := jwtsigner.GetPrivateKeyInfoFromPEM(privatePEM)
 	require.NoError(t, err)
-	pr, err := mldsa.NewPrivateKey(mldsa.MLDSA65(), rprkix.PrivateKey)
-	require.NoError(t, err)
 
-	pubFromPrivate := pr.PublicKey()
+	pubFromPrivate := rprkix.PublicKey()
 
 	require.True(t, pubFromPrivate.Equal(pubFromFile))
 
@@ -121,7 +117,7 @@ func TestDSA65(t *testing.T) {
 
 	keyctx, err := jwtsigner.NewSignerContext(ctx, &jwtsigner.SignerConfig{
 		Signer: &MLDSA{
-			PrivateKey: pr,
+			PrivateKey: rprkix,
 		},
 	})
 	require.NoError(t, err)
@@ -165,10 +161,8 @@ func TestDSA87(t *testing.T) {
 
 	rprkix, err := jwtsigner.GetPrivateKeyInfoFromPEM(privatePEM)
 	require.NoError(t, err)
-	pr, err := mldsa.NewPrivateKey(mldsa.MLDSA87(), rprkix.PrivateKey)
-	require.NoError(t, err)
 
-	pubFromPrivate := pr.PublicKey()
+	pubFromPrivate := rprkix.PublicKey()
 
 	require.True(t, pubFromPrivate.Equal(pubFromFile))
 
@@ -183,7 +177,7 @@ func TestDSA87(t *testing.T) {
 
 	keyctx, err := jwtsigner.NewSignerContext(ctx, &jwtsigner.SignerConfig{
 		Signer: &MLDSA{
-			PrivateKey: pr,
+			PrivateKey: rprkix,
 		},
 	})
 	require.NoError(t, err)

@@ -71,4 +71,21 @@ func TestKMSDSA65(t *testing.T) {
 	require.NoError(t, err)
 
 	require.True(t, vtoken.Valid)
+
+	// verify with just derived public key from private
+
+	verifierprivctx, err := jwtsigner.NewSignerContext(ctx, &jwtsigner.SignerConfig{
+		Signer: &GCPKMS{
+			KMSURI: kmsURI,
+		},
+	})
+	require.NoError(t, err)
+
+	keyFuncVerify, err := jwtsigner.SignerVerfiyKeyfunc(verifierprivctx)
+	require.NoError(t, err)
+
+	vprivtoken, err := jwt.Parse(tokenString, keyFuncVerify)
+	require.NoError(t, err)
+
+	require.True(t, vprivtoken.Valid)
 }

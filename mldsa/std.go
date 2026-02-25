@@ -6,8 +6,6 @@ import (
 
 	//"crypto/mldsa"
 	"crypto/rand"
-	"crypto/x509/pkix"
-	"encoding/asn1"
 	"errors"
 	"fmt"
 
@@ -59,27 +57,15 @@ func (s *MLDSA) Sign(signingString string, key interface{}) ([]byte, error) {
 	return signedBytes, nil
 }
 
-func (k *MLDSA) GetPublicKey() (jwtsigner.SubjectPublicKeyInfo, error) {
+func (k *MLDSA) GetPublicKey() (*mldsa.PublicKey, error) {
 
-	var oid asn1.ObjectIdentifier
-	switch k.PublicKey.Parameters().String() {
-	case mldsa.MLDSA44().String():
-		oid = jwtsigner.OidMLDSA44
-	case mldsa.MLDSA65().String():
-		oid = jwtsigner.OidMLDSA65
-	case mldsa.MLDSA87().String():
-		oid = jwtsigner.OidMLDSA87
-	default:
-		return jwtsigner.SubjectPublicKeyInfo{}, fmt.Errorf("golang-jwt-pqc: unsupported scheme %v", k.PublicKey.Parameters().String())
+	if k.PublicKey == nil && k.PrivateKey == nil {
+		return &mldsa.PublicKey{}, fmt.Errorf("golang-jwt-pqc: both public and private key cannot be null")
 	}
 
-	r := jwtsigner.SubjectPublicKeyInfo{
-		Algorithm: pkix.AlgorithmIdentifier{
-			Algorithm: oid,
-		},
-		PublicKey: asn1.BitString{
-			Bytes: k.PublicKey.Bytes(),
-		},
+	if k.PublicKey == nil && k.PrivateKey != nil {
+		k.PublicKey = k.PrivateKey.PublicKey()
 	}
-	return r, nil
+
+	return k.PublicKey, nil
 }

@@ -2,9 +2,13 @@ package awskms
 
 import (
 	"context"
+	"encoding/asn1"
 	"errors"
 	"fmt"
 
+	//"crypto/mldsa"
+
+	"filippo.io/mldsa"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/kms"
 	"github.com/aws/aws-sdk-go-v2/service/kms/types"
@@ -13,10 +17,10 @@ import (
 
 type AWSKMS struct {
 	jwtsigner.JWTSigner
-	KeyID     string                         // required
-	Region    string                         // required
-	KMSClient *kms.Client                    // optional
-	PublicKey jwtsigner.SubjectPublicKeyInfo // required for verify
+	KeyID     string           // required
+	Region    string           // required
+	KMSClient *kms.Client      // optional
+	PublicKey *mldsa.PublicKey // needed for verify
 }
 
 func (s *AWSKMS) Sign(signingString string, key interface{}) ([]byte, error) {
@@ -65,9 +69,54 @@ func (s *AWSKMS) Sign(signingString string, key interface{}) ([]byte, error) {
 	return resp.Signature, nil
 }
 
-func (k *AWSKMS) GetPublicKey() (jwtsigner.SubjectPublicKeyInfo, error) {
-	if k.PublicKey.Algorithm.Algorithm.Equal(jwtsigner.OidMLDSA44) || k.PublicKey.Algorithm.Algorithm.Equal(jwtsigner.OidMLDSA65) || k.PublicKey.Algorithm.Algorithm.Equal(jwtsigner.OidMLDSA87) {
-		return k.PublicKey, nil
+func (k *AWSKMS) GetPublicKey() (*mldsa.PublicKey, error) {
+
+	if k.PublicKey == nil {
+
+		if k.KeyID == "" || k.Region == "" {
+			return nil, errors.New("golang-jwt-pqc: both keyID and region must be set")
+		}
+
+		if k.KMSClient == nil {
+			cfg, err := config.LoadDefaultConfig(context.TODO())
+			if err != nil {
+				return nil, fmt.Errorf("golang-jwt-pqc: unable to load SDK config, %v", err)
+			}
+			k.KMSClient = kms.NewFromConfig(cfg)
+		}
+
+		input := &kms.GetPublicKeyInput{
+			KeyId: &k.KeyID,
+		}
+
+		resp, err := k.KMSClient.GetPublicKey(context.Background(), input)
+		if err != nil {
+			return nil, fmt.Errorf("golang-jwt-pqc: error signing %v\n", err)
+		}
+
+		var params *mldsa.Parameters
+		switch resp.KeySpec {
+		case types.KeySpecMlDsa44:
+			params = mldsa.MLDSA44()
+		case types.KeySpecMlDsa65:
+			params = mldsa.MLDSA65()
+		case types.KeySpecMlDsa87:
+			params = mldsa.MLDSA87()
+		default:
+			return nil, fmt.Errorf("golang-jwt-pqc: unsupported algorithm %s\n", resp.KeySpec)
+		}
+
+		var si jwtsigner.SubjectPublicKeyInfo
+		_, err = asn1.Unmarshal(resp.PublicKey, &si)
+		if err != nil {
+			return nil, fmt.Errorf("golang-jwt-pqc: error unmarshalling public key %v", err)
+		}
+		s, err := mldsa.NewPublicKey(params, si.PublicKey.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("golang-jwt-pqc: Error recreating public key %v", err)
+		}
+		k.PublicKey = s
 	}
-	return jwtsigner.SubjectPublicKeyInfo{}, fmt.Errorf("golang-jwt-pqc: unsupported scheme %v", k.PublicKey.Algorithm.Algorithm)
+	return k.PublicKey, nil
+
 }

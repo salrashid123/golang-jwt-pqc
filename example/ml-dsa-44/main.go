@@ -3,16 +3,14 @@ package main
 import (
 	"context"
 	//"crypto/mldsa"
-	"crypto/x509/pkix"
-	"encoding/asn1"
+
 	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"time"
 
-	mldsa "filippo.io/mldsa"
-
+	"filippo.io/mldsa"
 	"github.com/cloudflare/circl/sign/mldsa/mldsa44"
 	"github.com/cloudflare/circl/sign/mldsa/mldsa65"
 	jwt "github.com/golang-jwt/jwt/v5"
@@ -33,15 +31,9 @@ func main() {
 		log.Fatalf("%v", err)
 	}
 
-	pubS, err := jwtsigner.GetSubjectPublicKeyInfoFromPEM(pubKeyPEMBytes)
+	publicKey, err := jwtsigner.GetSubjectPublicKeyInfoFromPEM(pubKeyPEMBytes)
 	if err != nil {
 		log.Fatalf("%v", err)
-	}
-
-	publicKey, err := mldsa.NewPublicKey(mldsa.MLDSA44(), pubS.PublicKey.Bytes)
-	if err != nil {
-		fmt.Printf("error getting publicKey %v", err)
-		return
 	}
 
 	// read the public key
@@ -51,7 +43,7 @@ func main() {
 		log.Fatalf("%v", err)
 	}
 
-	priS, err := jwtsigner.GetPrivateKeyInfoFromPEM(privKeyPEMBytes)
+	privateKey, err := jwtsigner.GetPrivateKeyInfoFromPEM(privKeyPEMBytes)
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
@@ -59,12 +51,7 @@ func main() {
 	// create a JWT
 	// note, i'm setting the algorithm statically here.
 	//  if you want,  you can derive it from priS.PrivateKeyAlgorithm.Algorithm and then initialize the appropirate class
-	fmt.Printf("Key Algorithm: %s\n", priS.PrivateKeyAlgorithm.Algorithm)
-
-	privateKey, err := mldsa.NewPrivateKey(mldsa.MLDSA44(), priS.PrivateKey)
-	if err != nil {
-		log.Fatalf("%v", err)
-	}
+	fmt.Printf("Key Algorithm: %s\n", privateKey.PublicKey().Parameters().String())
 
 	// issue the jwt
 	claims := &jwt.RegisteredClaims{
@@ -119,7 +106,7 @@ func main() {
 	// now verify the same thing with a keyfunc
 
 	v, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		return pubS, nil
+		return publicKey, nil
 	})
 	if err != nil {
 		log.Fatalf("Error parsing token %v", err)
@@ -158,22 +145,17 @@ func main() {
 			if k.Kid == kid {
 				switch k.Alg {
 				case mldsa44.Scheme().Name():
-
-					return jwtsigner.SubjectPublicKeyInfo{
-						Algorithm: pkix.AlgorithmIdentifier{
-							Algorithm: jwtsigner.OidMLDSA44,
-						},
-						PublicKey: asn1.BitString{
-							Bytes: k.Pub,
-						},
-					}, nil
-
-				case mldsa65.Scheme().Name():
-					pu, err := mldsa65.Scheme().UnmarshalBinaryPublicKey(k.Pub)
+					e, err := mldsa.NewPublicKey(mldsa.MLDSA44(), k.Pub)
 					if err != nil {
-						return nil, fmt.Errorf("%w: error UnmarshalBinaryPublicKey ", err)
+						return nil, err
 					}
-					return pu, nil
+					return e, nil
+				case mldsa65.Scheme().Name():
+					e, err := mldsa.NewPublicKey(mldsa.MLDSA65(), k.Pub)
+					if err != nil {
+						return nil, err
+					}
+					return e, nil
 				default:
 					return nil, fmt.Errorf("error unsupported key alg: %s", k.Alg)
 				}

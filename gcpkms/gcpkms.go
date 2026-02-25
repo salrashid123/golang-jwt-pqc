@@ -7,6 +7,9 @@ import (
 
 	cloudkms "cloud.google.com/go/kms/apiv1"
 	"cloud.google.com/go/kms/apiv1/kmspb"
+
+	//"crypto/mldsa"
+	"filippo.io/mldsa"
 	"github.com/golang-jwt/jwt/v5"
 	jwtsigner "github.com/salrashid123/golang-jwt-pqc"
 	"golang.org/x/oauth2/google"
@@ -15,9 +18,9 @@ import (
 
 type GCPKMS struct {
 	jwtsigner.JWTSigner
-	KMSURI      string                         // needed to sign
-	PublicKey   jwtsigner.SubjectPublicKeyInfo // needed for verify
-	Credentials *google.Credentials            // option, otherwise derived from application default credentials
+	KMSURI      string              // needed to sign
+	PublicKey   *mldsa.PublicKey    // needed for verify
+	Credentials *google.Credentials // option, otherwise derived from application default credentials
 }
 
 func (s *GCPKMS) Sign(signingString string, key interface{}) ([]byte, error) {
@@ -82,9 +85,58 @@ func (s *GCPKMS) Sign(signingString string, key interface{}) ([]byte, error) {
 	return dresp.Signature, nil
 }
 
-func (k *GCPKMS) GetPublicKey() (jwtsigner.SubjectPublicKeyInfo, error) {
-	if k.PublicKey.Algorithm.Algorithm.Equal(jwtsigner.OidMLDSA44) || k.PublicKey.Algorithm.Algorithm.Equal(jwtsigner.OidMLDSA65) || k.PublicKey.Algorithm.Algorithm.Equal(jwtsigner.OidMLDSA87) {
-		return k.PublicKey, nil
+func (k *GCPKMS) GetPublicKey() (*mldsa.PublicKey, error) {
+
+	if k.PublicKey == nil {
+
+		if k.KMSURI == "" {
+			return nil, fmt.Errorf("golang-jwt-pqc: error deriving publicKey: either PublicKey or KMSURI must be set")
+		}
+		ctx := context.Background()
+		var creds *google.Credentials
+		if k.Credentials != nil {
+			creds = k.Credentials
+		} else {
+			var err error
+			creds, err = google.FindDefaultCredentials(ctx, cloudkms.DefaultAuthScopes()...)
+			if err != nil {
+				return nil, fmt.Errorf("golang-jwt-pqc: error getting default credentials %v", err)
+			}
+		}
+
+		// rest
+		//kmsClient, err := cloudkms.NewKeyManagementRESTClient(ctx, option.WithCredentials(creds))
+		// grpc
+		kmsClient, err := cloudkms.NewKeyManagementClient(ctx, option.WithCredentials(creds))
+		if err != nil {
+			return nil, fmt.Errorf("golang-jwt-pqc: error creating gcp kms client %v", err)
+		}
+		defer kmsClient.Close()
+
+		pk, err := kmsClient.GetPublicKey(ctx, &kmspb.GetPublicKeyRequest{
+			Name:            k.KMSURI,
+			PublicKeyFormat: kmspb.PublicKey_NIST_PQC,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("golang-jwt-pqc: error getting public key %v", err)
+		}
+
+		var params *mldsa.Parameters
+		switch pk.Algorithm {
+		case kmspb.CryptoKeyVersion_PQ_SIGN_ML_DSA_44:
+			params = mldsa.MLDSA44()
+		case kmspb.CryptoKeyVersion_PQ_SIGN_ML_DSA_65:
+			params = mldsa.MLDSA65()
+		case kmspb.CryptoKeyVersion_PQ_SIGN_ML_DSA_87:
+			params = mldsa.MLDSA87()
+		default:
+			return nil, fmt.Errorf("golang-jwt-pqc: unsupported algorithm %s\n", pk.Algorithm)
+		}
+		s, err := mldsa.NewPublicKey(params, pk.PublicKey.Data)
+		if err != nil {
+			return nil, fmt.Errorf("golang-jwt-pqc: Error recreating public key %v", err)
+		}
+		k.PublicKey = s
 	}
-	return jwtsigner.SubjectPublicKeyInfo{}, fmt.Errorf("golang-jwt-pqc: unsupported scheme %v", k.PublicKey.Algorithm.Algorithm)
+	return k.PublicKey, nil
 }
