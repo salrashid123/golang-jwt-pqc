@@ -8,9 +8,6 @@ Specifically, this implements jwt signing with `ML-DSA` using either
 * `Google Cloud KMS` 
 * `AWS KMS`
 
-
->> *NOTE* this library internally uses `"filippo.io/mldsa"` as the mlDSA provider which is still under devleopment [https://github.com/golang/go/issues/77626](https://github.com/golang/go/issues/77626).  Eventually when that is merged into standard go  `"crypto/mldsa"`, i'll swap the implementation.  Please note that will be a breaking change since it will migrate the return function parameters from `"filippo.io/mldsa"` --> `crypto/mldsa`
-
 A sample JWT generated is in the form:
 
 ```json

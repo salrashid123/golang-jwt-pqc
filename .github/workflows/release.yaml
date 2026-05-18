@@ -11,6 +11,12 @@ permissions:
   packages: write # needed for ghcr access
   attestations: write # needed for provenance
 
+env:
+  CICD_SA_JSON: ${{ secrets.CICD_SA_JSON }}
+  CICD_AWS_ACCESS_KEY: ${{ secrets.CICD_AWS_ACCESS_KEY }}    
+  CICD_AWS_ACCESS_SECRET: ${{ secrets.CICD_AWS_ACCESS_SECRET }} 
+  CICD_AWS_REGION: ${{ secrets.CICD_AWS_REGION }} 
+
 jobs:
   test:
     runs-on: ubuntu-latest  
@@ -23,14 +29,20 @@ jobs:
         with:
           go-version-file: 'go.mod'
 
-      - name: Run tests
-        env:
-          CICD_SA_JSON: ${{ secrets.CICD_SA_JSON }}
-          CICD_AWS_ACCESS_KEY: ${{ secrets.CICD_AWS_ACCESS_KEY }}    
-          CICD_AWS_ACCESS_SECRET: ${{ secrets.CICD_AWS_ACCESS_SECRET }} 
-          CICD_AWS_REGION: ${{ secrets.CICD_AWS_REGION }}                   
-        run: go test -v ./...
+      - name: Run tests root
+        run: go test -v .
 
+      - name: Run tests PEM
+        working-directory: mldsa
+        run: go test -v .
+
+      - name: Run tests GCP
+        working-directory: gcpkms
+        run: go test -v .
+
+      - name: Run tests AWS
+        working-directory: awskms
+        run: go test -v .
 
   release:
     runs-on: ubuntu-latest

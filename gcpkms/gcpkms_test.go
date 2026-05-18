@@ -45,7 +45,7 @@ func TestKMSDSA65(t *testing.T) {
 		Issuer:    "test",
 	}
 
-	token := jwt.NewWithClaims(jwtsigner.SigningMethodMLDSA87, claims)
+	token := jwt.NewWithClaims(jwtsigner.SigningMethodMLDSA65, claims)
 
 	keyctx, err := jwtsigner.NewSignerContext(ctx, &jwtsigner.SignerConfig{
 		Signer: &GCPKMS{

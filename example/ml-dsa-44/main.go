@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	//"crypto/mldsa"
+	mldsa "filippo.io/mldsa"
 
 	"encoding/json"
 	"fmt"
@@ -10,9 +11,6 @@ import (
 	"os"
 	"time"
 
-	"filippo.io/mldsa"
-	"github.com/cloudflare/circl/sign/mldsa/mldsa44"
-	"github.com/cloudflare/circl/sign/mldsa/mldsa65"
 	jwt "github.com/golang-jwt/jwt/v5"
 	jwtsigner "github.com/salrashid123/golang-jwt-pqc"
 	mldsasigner "github.com/salrashid123/golang-jwt-pqc/mldsa"
@@ -144,13 +142,13 @@ func main() {
 		for _, k := range keyset.Keys {
 			if k.Kid == kid {
 				switch k.Alg {
-				case mldsa44.Scheme().Name():
+				case mldsa.MLDSA44().String():
 					e, err := mldsa.NewPublicKey(mldsa.MLDSA44(), k.Pub)
 					if err != nil {
 						return nil, err
 					}
 					return e, nil
-				case mldsa65.Scheme().Name():
+				case mldsa.MLDSA65().String():
 					e, err := mldsa.NewPublicKey(mldsa.MLDSA65(), k.Pub)
 					if err != nil {
 						return nil, err

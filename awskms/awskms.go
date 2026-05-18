@@ -7,8 +7,8 @@ import (
 	"fmt"
 
 	//"crypto/mldsa"
+	mldsa "filippo.io/mldsa"
 
-	"filippo.io/mldsa"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/kms"
 	"github.com/aws/aws-sdk-go-v2/service/kms/types"

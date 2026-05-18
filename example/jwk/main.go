@@ -50,7 +50,7 @@ func main() {
 
 	// https://datatracker.ietf.org/doc/draft-ietf-cose-dilithium/
 	pub64 := base64.URLEncoding.EncodeToString(r.PublicKey.Bytes)
-	canonicalJSON := fmt.Sprintf("{\"kty\":\"AKP\",\"alg\":\"ML_DSA-44\",\"pub\":\"%s\"}", pub64)
+	canonicalJSON := fmt.Sprintf("{\"alg\":\"ML-DSA-44\",\"kty\":\"AKP\",\"pub\":\"%s\"}", pub64)
 	h := sha256.New()
 	h.Write([]byte(canonicalJSON))
 	keyid := base64.RawStdEncoding.EncodeToString(h.Sum(nil))

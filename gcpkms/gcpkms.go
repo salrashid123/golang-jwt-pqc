@@ -9,7 +9,8 @@ import (
 	"cloud.google.com/go/kms/apiv1/kmspb"
 
 	//"crypto/mldsa"
-	"filippo.io/mldsa"
+	mldsa "filippo.io/mldsa"
+
 	"github.com/golang-jwt/jwt/v5"
 	jwtsigner "github.com/salrashid123/golang-jwt-pqc"
 	"golang.org/x/oauth2/google"
