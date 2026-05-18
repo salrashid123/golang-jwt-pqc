@@ -7,10 +7,10 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.32.17
 	github.com/aws/aws-sdk-go-v2/service/kms v1.51.1
 	github.com/golang-jwt/jwt/v5 v5.3.1
-	github.com/salrashid123/golang-jwt-pqc v0.0.0
-	github.com/salrashid123/golang-jwt-pqc/awskms v0.0.0
-	github.com/salrashid123/golang-jwt-pqc/gcpkms v0.0.0
-	github.com/salrashid123/golang-jwt-pqc/mldsa v0.0.0
+	github.com/salrashid123/golang-jwt-pqc v0.0.50
+	github.com/salrashid123/golang-jwt-pqc/awskms v0.0.50
+	github.com/salrashid123/golang-jwt-pqc/gcpkms v0.0.50
+	github.com/salrashid123/golang-jwt-pqc/mldsa v0.0.50
 )
 
 require (
@@ -60,11 +60,4 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260427160629-7cedc36a6bc4 // indirect
 	google.golang.org/grpc v1.80.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
-)
-
-replace (
-	github.com/salrashid123/golang-jwt-pqc => ../
-	github.com/salrashid123/golang-jwt-pqc/awskms => ../awskms
-	github.com/salrashid123/golang-jwt-pqc/gcpkms => ../gcpkms
-	github.com/salrashid123/golang-jwt-pqc/mldsa => ../mldsa
 )

@@ -80,6 +80,14 @@ github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 h1:GFCKgm
 github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10/go.mod h1:t/avpk3KcrXxUnYOhZhMXJlSEyie6gQbtLq5NM3loB8=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
+github.com/salrashid123/golang-jwt-pqc v0.0.50 h1:yp3z6SOFjy1n4s7qlAEUYhkBzlNtSMa4c92SfWKWeKQ=
+github.com/salrashid123/golang-jwt-pqc v0.0.50/go.mod h1:ojUEv31jppOfnOs+e7VMdUKnJQcNXcqS4W46eMf74C4=
+github.com/salrashid123/golang-jwt-pqc/awskms v0.0.50 h1:zcu2nTCiMNwzfaiTSBDStqS46ejHL1HLe1B96YgHLqo=
+github.com/salrashid123/golang-jwt-pqc/awskms v0.0.50/go.mod h1:+8rx/IQK81bBTtlWihrJCEhpDKdkgwBH7xgxVkBvc/I=
+github.com/salrashid123/golang-jwt-pqc/gcpkms v0.0.50 h1:vGuVuw34P84vfhEo+AZYFmg521Esn/ftkEm7EmqdkEA=
+github.com/salrashid123/golang-jwt-pqc/gcpkms v0.0.50/go.mod h1:HOF9jZ3iCCG5LV/CStKB6sAiSzA5Gcl0ON1PNm66hgM=
+github.com/salrashid123/golang-jwt-pqc/mldsa v0.0.50 h1:WVpmkjOktjOQ8Pmu7uOV135vjK0FG2oo3StHV1yRHq4=
+github.com/salrashid123/golang-jwt-pqc/mldsa v0.0.50/go.mod h1:NsfIO32muWPhWQnbvuSAotN+7/a2G3Rtgy/xxGEUJBQ=
 github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu7U=
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
 go.opentelemetry.io/auto/sdk v1.2.1 h1:jXsnJ4Lmnqd11kwkBV2LgLoFMZKizbCi5fNZ/ipaZ64=
