@@ -23,11 +23,15 @@ A sample JWT generated is in the form:
 }
 ```
 
-Note, while MLDSA is [NIST approved](https://nvlpubs.nist.gov/nistpubs/fips/nist.fips.204.pdf), the specific JWT standard is draft
+While MLDSA is [NIST approved](https://nvlpubs.nist.gov/nistpubs/fips/nist.fips.204.pdf), the specific JWT standard is draft
 
 * [ML-DSA for JOSE and COSE](https://datatracker.ietf.org/doc/draft-ietf-cose-dilithium/)
 
 >> This code is NOT supported by google
+
+---
+
+>> *NOTE* this library internally uses `"filippo.io/mldsa"` as the mlDSA provider which is still under devleopment [https://github.com/golang/go/issues/77626](https://github.com/golang/go/issues/77626).  Eventually when that is merged into standard go  `"crypto/mldsa"`, i'll swap the implementation.  Please note that will be a breaking change since it will migrate the return function parameters from `"filippo.io/mldsa"` --> `crypto/mldsa`.  If you want to see an example with a patched version of upstream golang, see the [go_127](https://github.com/salrashid123/golang-jwt-pqc/tree/go_127) branch in this repo: 
 
 ---
 
@@ -83,13 +87,29 @@ Also, the `alg` field is simply one derived from the draft: [ML-DSA for JOSE and
 There are two ways you can generate a JWT and verify it:
 
 1)  Read the private/public key from file
-2)  Read the private key from GCP KMS and the public key from file
+2)  Use KMS based private key to sign and the public key from file to verify
 
-If you want a quickstart to using option (1) see the `examples/` folder
+This library is separted out into several contained modules depending on your usecase.
+
+You'll need to always import the base module `github.com/salrashid123/golang-jwt-pqc`
+
+- If you want to use plain PEM based private keys, you need to import the base module and `github.com/salrashid123/golang-jwt-pqc/mldsa`
+- If you want to use GCP KMS, import the base module and `github.com/salrashid123/golang-jwt-pqc/gcpkms`
+- If you you want to use AWS KMS, import the base module and `github.com/salrashid123/golang-jwt-pqc/awskms`
+
+see the `examples/` folder.  
+
+For PEM based privatekeys, the minimal sample is:
 
 - `sign`
 
 ```golang
+import (
+	jwt "github.com/golang-jwt/jwt/v5"
+	jwtsigner "github.com/salrashid123/golang-jwt-pqc"
+	mldsasigner "github.com/salrashid123/golang-jwt-pqc/mldsa"
+)
+
 	privKeyPEMBytes, err := os.ReadFile("certs/bare_seed/ml-dsa-44-private.pem")
 	privateKey, err := jwtsigner.GetPrivateKeyInfoFromPEM(privKeyPEMBytes)
 
