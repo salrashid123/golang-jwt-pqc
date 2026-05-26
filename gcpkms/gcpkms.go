@@ -13,15 +13,13 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	jwtsigner "github.com/salrashid123/golang-jwt-pqc"
-	"golang.org/x/oauth2/google"
-	"google.golang.org/api/option"
 )
 
 type GCPKMS struct {
 	jwtsigner.JWTSigner
-	KMSURI      string              // needed to sign
-	PublicKey   *mldsa.PublicKey    // needed for verify
-	Credentials *google.Credentials // option, otherwise derived from application default credentials
+	KMSURI    string // needed to sign
+	KMSClient *cloudkms.KeyManagementClient
+	PublicKey *mldsa.PublicKey // needed for verify
 }
 
 func (s *GCPKMS) Sign(signingString string, key interface{}) ([]byte, error) {
@@ -54,31 +52,11 @@ func (s *GCPKMS) Sign(signingString string, key interface{}) ([]byte, error) {
 		return nil, errors.New("golang-jwt-pqc: kmsuri must be specified for Sign")
 	}
 
-	var creds *google.Credentials
-	if s.Credentials != nil {
-		creds = s.Credentials
-	} else {
-		var err error
-		creds, err = google.FindDefaultCredentials(ctx, cloudkms.DefaultAuthScopes()...)
-		if err != nil {
-			return nil, fmt.Errorf("golang-jwt-pqc: error getting default credentials %v", err)
-		}
-	}
-
-	// rest
-	//kmsClient, err := cloudkms.NewKeyManagementRESTClient(ctx, option.WithCredentials(creds))
-	// grpc
-	kmsClient, err := cloudkms.NewKeyManagementClient(ctx, option.WithCredentials(creds))
-	if err != nil {
-		return nil, fmt.Errorf("golang-jwt-pqc: error creating gcp kms client %v", err)
-	}
-	defer kmsClient.Close()
-
 	req := &kmspb.AsymmetricSignRequest{
 		Name: sctx.KMSURI,
 		Data: []byte(signingString),
 	}
-	dresp, err := kmsClient.AsymmetricSign(ctx, req)
+	dresp, err := sctx.KMSClient.AsymmetricSign(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("golang-jwt-pqc: error signing %v", err)
 	}
@@ -94,27 +72,8 @@ func (k *GCPKMS) GetPublicKey() (*mldsa.PublicKey, error) {
 			return nil, fmt.Errorf("golang-jwt-pqc: error deriving publicKey: either PublicKey or KMSURI must be set")
 		}
 		ctx := context.Background()
-		var creds *google.Credentials
-		if k.Credentials != nil {
-			creds = k.Credentials
-		} else {
-			var err error
-			creds, err = google.FindDefaultCredentials(ctx, cloudkms.DefaultAuthScopes()...)
-			if err != nil {
-				return nil, fmt.Errorf("golang-jwt-pqc: error getting default credentials %v", err)
-			}
-		}
 
-		// rest
-		//kmsClient, err := cloudkms.NewKeyManagementRESTClient(ctx, option.WithCredentials(creds))
-		// grpc
-		kmsClient, err := cloudkms.NewKeyManagementClient(ctx, option.WithCredentials(creds))
-		if err != nil {
-			return nil, fmt.Errorf("golang-jwt-pqc: error creating gcp kms client %v", err)
-		}
-		defer kmsClient.Close()
-
-		pk, err := kmsClient.GetPublicKey(ctx, &kmspb.GetPublicKeyRequest{
+		pk, err := k.KMSClient.GetPublicKey(ctx, &kmspb.GetPublicKeyRequest{
 			Name:            k.KMSURI,
 			PublicKeyFormat: kmspb.PublicKey_NIST_PQC,
 		})

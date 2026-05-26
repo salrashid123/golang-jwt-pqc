@@ -1,8 +1,8 @@
-
 go 1.26
 
 use (
 	./awskms
 	./gcpkms
 	./mldsa
+	./vault
 )

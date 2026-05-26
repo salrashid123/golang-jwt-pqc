@@ -7,6 +7,7 @@ Specifically, this implements jwt signing with `ML-DSA` using either
 * PEM private key files
 * `Google Cloud KMS` 
 * `AWS KMS`
+* `HashiCorp Vault` (exprimental)
 
 A sample JWT generated is in the form:
 
@@ -265,6 +266,136 @@ openssl pkey -inform DER -pubin -in /tmp/PublicKey.der -outform PEM -out certs/m
 ### then to run the sample:
 $ go run ml-dsa-65-aws-kms/main.go --region=us-east-2 --keyID="37aca4ea-3915-441f-b03d-d90bad1eb45a"
 ```
+
+### With HashiCorp Vault Enterprise
+
+HashiCorp Vault also support MLDSA but you have to use the "Enterprise" version.
+
+The following demonstrates using the _trial_ Vault Enterprise 
+
+
+```bash
+### first get the root token and vault's address
+export VAULT_TOKEN=hvs.CAESIKIBgCMQ_l3sJXdHEwwb6KfR9Q14buCX7bIqwA8YSE4YGicKImh2cy4xUGlHVVhBc2RzQ---redacted
+export VAULT_ADDR="https://vault-cluster-public-vault-c305537c.8639af5b.z1.hashicorp.cloud:8200"
+export VAULT_NAMESPACE="admin"
+
+## enable the transit engine and create an mldsa-65 key
+
+cd example/
+vault secrets enable transit
+vault policy write secrets-policy secrets_policy.hcl
+vault policy write token-policy token_policy.hcl
+vault write -f transit/keys/my-sign-key type=ml-dsa parameter_set=65
+
+
+$ vault write -f transit/keys/my-sign-key type=ml-dsa parameter_set=65
+      Key                       Value
+      ---                       -----
+      allow_plaintext_backup    false
+      auto_rotate_period        0s
+      deletion_allowed          false
+      derived                   false
+      exportable                false
+      imported_key              false
+      keys                      map[1:map[certificate_chain: creation_time:2026-05-26T14:37:45.456447107Z hybrid_public_key: name:ml-dsa-65 public_key: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]]
+      latest_version            1
+      min_available_version     0
+      min_decryption_version    1
+      min_encryption_version    0
+      name                      my-sign-key
+      parameter_set             65
+      supports_decryption       false
+      supports_derivation       false
+      supports_encryption       false
+      supports_signing          true
+      type                      ml-dsa
+
+
+#### now create a "end user" token (i.,e not root)
+$ vault token create -policy=token-policy  -policy=secrets-policy
+
+export VAULT_TOKEN=hvs.CAESIC5M9tE29uEq5_ms9-FgbevRmBzxkryS9PURZk0fgmk4GicKImh2cy5obU9LVXF2a052Q3N3R2lGQW5DR---redacted
+export VAULT_ADDR="https://vault-cluster-public-vault-c305537c.8639af5b.z1.hashicorp.cloud:8200"
+export VAULT_NAMESPACE="admin"
+
+### test signing
+PAYLOAD=$(echo -n "Hello, Vault" | base64)
+vault write -format=json transit/sign/my-sign-key input="$PAYLOAD"
+
+```
+
+Now use it
+
+```bash
+$ go run ml-dsa-65-vault/main.go -namespace admin --keyName=my-sign-key \
+   -vault_addr="https://vault-cluster-public-vault-c305537c.8639af5b.z1.hashicorp.cloud:8200" \
+   -vault_token="hvs.CAESIC5M9tE29uEq5_ms9-FgbevRmBzxkryS9PURZk0fgmk4GicKImh2cy5obU9LVXF2a052Q3N3R2lGQW5DRE5pY---redacted"
+ml-dsa-65
+-----BEGIN PUBLIC KEY-----
+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
+Wqz6ZSsJ
+-----END PUBLIC KEY-----
+Got Public Key ML-DSA-65
+2026/05/26 14:07:21 TOKEN: eyJhbGciOiJNTC1EU0EtNjUiLCJraWQiOiJrZXlpZF81Iiwia3R5IjoiQUtQIiwidHlwIjoiSldUIn0.eyJpc3MiOiJ0ZXN0IiwiZXhwIjoxNzc5ODE4OTAxfQ.mfQPXteqHdj1CUl2WmaV7EpkVj9ffCbJ2o0S_1ORejz__yWkC23YVSE5yIB6nMqez-PJVkTe3Y2hWLMwg79wW4otk1fvE6Pu4igqI3bH2jBqORZh-BGqZU1LeatNbkVJ0X1LVkqJevshZBSX7rH63UiCDqpejc-culAIicP6XBqw4uglVuZOUj1ayR7ar7FNJEbNLqv2nMaE1MhEkRIH6gH0NExX-m7TUkMDplqZ6MWkhD3xPOUVAUHun0Aq8Q2R5Y5bLQDmxzdb7bcKorAaijfN7FrOFi59w0VVhhi6JiFw9tbU0txdkd58aQkbTW0npslP0xz5zfV45jVRxOvUEF-cUZVzo4ibg5TwBBoApmlmwj5cHNjLFwqySsW339SuN5-c52FFhXVS9CpLqMMHGqW87DBsvIwS6Eyud9fDEiTqadmlReRg0FizpDntgWtkjRKT7a5aoeEt56jFb4CCreOlpL6nkq1fs80fLrMzwYDSGkH8lX5FOcfqgodQPbhcFrrf5W16tZ5GbmH15YhjgE4fjnT-Twh8Gy4KLx0337ztzEXCTHIerCw6ckba25AWzCIkEeNAD6F480xqbjHdgxUEGtdfeVHpjxxoM5vECHKHc--2o_pxr9kMGCOsMXUsQF8RUmZbSAh4MoGikk7UAvxDeVa3XcGmOrVkQWeiE5DLo5O1m1-ajBgjA9CpEUAYQnSBswItNvuwYderkSI2SS2sDlkZjdiFYrgAxcEghSy-6TNChLgGM0T9nJoz55Uv84EV7z4npSalmNzjq5EgNHuQNaP_3upndQ562gpwI4o3etHAU9agYwS7z2hIJMuNOpm_A2MsgseY-f9J2us-zPuOjsBKAsh4FW3AVDibkOxKqgWQ6cEATOkk9nSQo63sxN1SdDm9NaYiywElBuECg0q_3HZRMtlDV9TKVFTHkMiTpXoIcBevzwj9DFS31p27We1qiOQElnplzaEGOB1RCopPrjuSqUjwOeZvQqg_eCKfE5uZnHB5UcodY6kzLPGfMYxHmwDM1y2g3zqZXq_0fcgYlQ5Dam8TvJj0FESxo46xZqE5lqd1jy1GPpKm8xEW4blh4RqhEqyecu8lZQzYb3sGUoLeK5xTVRwz3YKyf_O647gIfei0m1w2iCP3AdzJ5wMuDUwb1JlV65nxqnI05hycNg-rwTvtIgFonphjUUEPWFIlmNkAhZHE1RfZS6guZvAyrvuN3fHl9pPDnusbejKjMZZ5Mq1O2g_FVkuf2y2lep1sNRRbDGfAOFSZ97u800Okgp2dfDT9YzhMwEtH1sjns7aZ41Zxb3HteqrAJDb5V19SQUPniVxAVd02lZOVa68Ry83iAflAwXlzMCBis1DLxjYDNloUiMhUxMMTQcl9UWUiCr-n8O34mTZ8m6CioMRqpdw0GKqBhFj_jhCEc5x9wjSfBy8u0PTZOGpnHWi_apkXUEzGXoWbGDqNY2gcC8DSHpzTmdmjeBe5mXiSYms1opGjMvHpkSFzEsp3gkOzenZgzQy-p0wjwllF2JwqgEF0x-NdolhfissuS8h3Xo1iuVb3dUysFmI4vwfclRcklLUHUH8JqZdoCLwTrW7YOwlbArrlVbDYI2lgmWDl27f0rD1QaLRTbCZX0Vlc31wkIpdsxuiJbE78yCcNgX1VIHyq8TuyVCYNJ0c-0unp8QSnqerSy0QBhuE1wG9mUN-gqlvl_eNSn-wkQHZoCBjbgvNfWNmexr6B6cXgsG-iQW3Fa6-HYFRkanAX42YaxqzoHMj2Dva63x51CjUy8-dZBkqMHO51evIpRKxkpqXypBberU5RxFRKN59mesHDMrjh_nA5lIq7k9YoHPgJNR8J7mxoSkycAJZeaiXOt1rn0jAPEIK2hNhDtzMMTgSnTrGte_-sPh-qp4rgf2xqdxf-81MMRYtAOrbecN7SD8xi5XjM7vXdUpn6P6eeCKTIuFKXNFVsCC_1zYqtsSgodmmG4qIEjj3jyOWwK2gmpctUdFBFa2SPp4-Pa-dazOI2f0G9OA4NRDCujN1rhjtSKToE7za9t1BqNPMABAVtkORrIuzitEFBeua8NZ5KcCAIdw7rdZ5ublvSbImnU5Zn-6SwpOSKQyuGji55NW90LiBH8kcqlVhJufh5NZxmfScBsxzqVTafcWrXa8GrQw33aAjFAjsXARmYMRUYFwCYrU3xExkKcnKKn2RwXrbETt8QPRiMqqcdB7jmfm1MtQZhA51iXOnImsKx7kzQf6gPxqLfYYcJlQ6JRjanlFCgcE4VOo46ceC6VhUu_c2YaohkYHR9GRkBCYzE-C6aWCDapfIejxd6to-5QONWArUnI3QCVUAwYF_cBA25sjXpO95pVRcl_nRcZROidlly8nWUMp3jdWBl9aPzt7-SrtBpuhRDftwAmu0Zl9z4pb9bloiKeLjklkuKlLZXG4OMlNPEIRkCIGlWuy2plG3zsTqIBRj4YDQNl3Uz6iiQv1flETs4AnMiPpSa4P1sFxELfd0ccl3nYDXguh0IHAQTaCJzKy8CCLgDMZsC_8KgAZ-JDJNm7NpRrgUOFGHFmIIrfFO6VBIFrily6jAYzB8pbVebHj-Qn3qLhyI8DHmi3PiaFQzhoGxPpl-DcJjEHbW3USzsuXUXNG02yfZN1lJvpuWwz9pPoofyj5mkQAHFhDIqYIIjzkMrwrsV4mCck3RipkUfbcO3CfUOUjN-cboy8Lbo7ZsJAg8kvo0NuBvEACnQhMGMvmSyEmzcn0AWdN1cxEtL15wv9lvebXl7A1DAmMWFl84Kwuha4TF23vfLLk58dEgUL-nMHCh1HuTRL07_604U5uW7A2QZNY3xfersMf3Jg6iCf7I_0FYf7fTofuilfCncuA-_YGF5qaane4VvsNofFfdADeguZ2RXbgP7cp23u0khcAGFGBj9_EfwVMqOD2yV064mc3H-T06ul4TNFrS2wgCXfw6NgcdnjxSYDW9Q4zcOzfMPolQE9BhGB4qoLLAs76B6KXzZs-9-Pyk_oN-E32ySdsTM72LV_u60_7t8XLGKkbNcuyVlEytCKh6EC7gvNVWLBJQBtQjg8nQZjz5IZulrQ8SzdlbxlVxSrUxfvOQf7sSXPNW7l9jeAoADXv5lzyd6iqQYZDiBDC58Yl7HHFqv2aNBWpVQo-JEmpUjG7tA4uqBJKb1rwBMDu83LM1ETisEus5tFMkx5c7J4txuGE2nHTn_dk405_B4om0Q3533Ve8zqQpqT-Zue6Oko1LREuMREPn6KLRDkt-4IwUie3Ciy8BOzr6q4K4-2DSN1AKBnsBg3DkQT_wM-R7MJXxh7KBP5MwyomghMie8TF2NqHk9k4J3eyc1JEGZRpUaz2Wc_TNwaRWxwo3ulifWmAZVxV_i3_zQFiU9AAOHjiiRpKCkBkadsYHfaRIESQssoLJkzjxc1E_arGmeeOvYIvjZ_WdHD2aOafTW7rUfFGrQf8M_Zv9FYmTpd9ey4VWQ9jDaYF1NM4jUWbc7sVqhL-R1JQGad2w9nJf-o05ItWwUb6UJuQJC1uPpI055iRsALcz_qTs29riZTA08mRr_05T3Vlsk_9004OENGKHEnGjzrukYsLZlyI1mZtiRC9uXOpuxQ-C-bqSioFCkB7vsCXHg8cDo-B-nJH8HOKGkB6JqrGGRaffF3dazv7goLlw6ZYsBPVF2G445HFDE9xLhSu_eE-tVKI-mhZ7E-i41o4KwThLEpBfCmQC9hd7enN1Flino6Jno93tYBC9D-64qcj9FwbB79NZDxi6aKHmE53RW--BkT7UkYQxmS54ssLkLghc93WoJuDz48DQIsviEX3egd1Bl4MBc8d1B1wg-dm9S3QKRJxn_xHJswFvE9sD5izMKUwvAZB9LR-mnST1plTlsLlw_Rud8gbSWQtd8qqBTmBnAGb2sM5SrYX1RmUAzPgJogTdzax_3IquWcxGHpMERU0Tt_ifjBwAuqaUXQBmHxkDR6c2wnMN9U-7awYVQJaFTVYG1Eofx94RzANqha4_Z4HdOtids4QeVtkCmAwGCMc_QHamXMJI56f5EeeoeRsveEbUkooVHlgWCTHY0ZXz92p2pHf3Zs0qTha-5-NuunUmjRE1ZdmtzMfpw8KgYj3aaA3lsbUgeSltfWFr0c2NcQ10bh6gPdgH6nut5p-WSGM1yydOEb_9xjDu8dK_41zpMQukzquUWBLvuGxVR5VnjJkJPpe23yGie6C3uVBbF2dR5njqfXuIx5ytCV1qobj5x5PeuNuDqyc54CyuVdLA5y3-ztU0jyBx1WdH-zYiyNuRYU1-U1joEgu6IgBwf2f3ln7AwOUyBhLncCD9KW5DZGr34IVlhZpzr9v8ST2J7gJO11y9DSMrg5QAAAAAAAAAAAAAAAAAAAAAABw0QGCAm
+2026/05/26 14:07:21 verified with Signer PublicKey
+```
+
+note that you can't extract the public key at this point so what i ended up doing is generating the public key by 'reading' the vault structure using the following command 
+`vault read transit/keys/my-sign-key` and marshalling it into PEM format
+
+```bash
+$ vault read transit/export/public-key/my-sign-key
+        Error reading transit/export/public-key/my-sign-key: Error making API request.
+
+        Namespace: admin/
+        URL: GET https://vault-cluster-public-vault-c305537c.8639af5b.z1.hashicorp.cloud:8200/v1/transit/export/public-key/my-sign-key
+        Code: 500. Errors:
+
+        * 1 error occurred:
+            * unknown key type ml-dsa for export type public-key
+```
+
 
 ### Misc
 

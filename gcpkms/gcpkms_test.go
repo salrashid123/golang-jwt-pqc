@@ -7,10 +7,12 @@ import (
 	"testing"
 	"time"
 
+	cloudkms "cloud.google.com/go/kms/apiv1"
 	"github.com/golang-jwt/jwt/v5"
 	jwtsigner "github.com/salrashid123/golang-jwt-pqc"
-
 	"github.com/stretchr/testify/require"
+	"golang.org/x/oauth2/google"
+	"google.golang.org/api/option"
 )
 
 const ()
@@ -47,9 +49,21 @@ func TestKMSDSA65(t *testing.T) {
 
 	token := jwt.NewWithClaims(jwtsigner.SigningMethodMLDSA65, claims)
 
+	creds, err := google.FindDefaultCredentials(ctx, cloudkms.DefaultAuthScopes()...)
+	require.NoError(t, err)
+
+	// rest
+	//kmsClient, err := cloudkms.NewKeyManagementRESTClient(ctx, option.WithCredentials(creds))
+	// grpc
+	kmsClient, err := cloudkms.NewKeyManagementClient(ctx, option.WithCredentials(creds))
+	require.NoError(t, err)
+
+	defer kmsClient.Close()
+
 	keyctx, err := jwtsigner.NewSignerContext(ctx, &jwtsigner.SignerConfig{
 		Signer: &GCPKMS{
-			KMSURI: kmsURI,
+			KMSURI:    kmsURI,
+			KMSClient: kmsClient,
 		},
 	})
 	require.NoError(t, err)

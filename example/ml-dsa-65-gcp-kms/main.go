@@ -7,9 +7,12 @@ import (
 	"os"
 	"time"
 
+	cloudkms "cloud.google.com/go/kms/apiv1"
 	jwt "github.com/golang-jwt/jwt/v5"
 	jwtsigner "github.com/salrashid123/golang-jwt-pqc"
 	gcpkmssigner "github.com/salrashid123/golang-jwt-pqc/gcpkms"
+	"golang.org/x/oauth2/google"
+	"google.golang.org/api/option"
 )
 
 /*
@@ -41,9 +44,18 @@ func main() {
 
 	token := jwt.NewWithClaims(jwtsigner.SigningMethodMLDSA65, claims)
 
+	creds, err := google.FindDefaultCredentials(ctx, cloudkms.DefaultAuthScopes()...)
+	if err != nil {
+		log.Fatalf("Error getting credentials %v", err)
+	}
+	kmsClient, err := cloudkms.NewKeyManagementClient(ctx, option.WithCredentials(creds))
+	if err != nil {
+		log.Fatalf("Error getting client %v", err)
+	}
 	keyctx, err := jwtsigner.NewSignerContext(ctx, &jwtsigner.SignerConfig{
 		Signer: &gcpkmssigner.GCPKMS{
-			KMSURI: *kmsURI,
+			KMSURI:    *kmsURI,
+			KMSClient: kmsClient,
 		},
 	})
 	if err != nil {
