@@ -41,6 +41,7 @@ While MLDSA is [NIST approved](https://nvlpubs.nist.gov/nistpubs/fips/nist.fips.
   * [With Private Key Files](#with-private-key-files)
   * [With Google KMS](#with-google-cloud-kms)
   * [With AWS KMS](#with-aws-kms)
+  * [With HashiCorp Vault Enterprise](#with-hashicorp-vault-enterprise)
 * [Misc](#misc)
   * [Private Key Formats](#private-key-formats)
     * [Openssl Formats](#openssl-formats)
