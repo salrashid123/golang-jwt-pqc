@@ -1,9 +1,8 @@
 module github.com/salrashid123/golang-jwt-pqc/awskms
 
-go 1.26
+go 1.27
 
 require (
-	filippo.io/mldsa v0.0.0-20260215214346-43d0283efc3e
 	github.com/aws/aws-sdk-go-v2/config v1.32.17
 	github.com/aws/aws-sdk-go-v2/service/kms v1.51.1
 	github.com/golang-jwt/jwt/v5 v5.3.1

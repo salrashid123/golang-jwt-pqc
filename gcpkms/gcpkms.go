@@ -8,8 +8,7 @@ import (
 	cloudkms "cloud.google.com/go/kms/apiv1"
 	"cloud.google.com/go/kms/apiv1/kmspb"
 
-	//"crypto/mldsa"
-	mldsa "filippo.io/mldsa"
+	"crypto/mldsa"
 
 	"github.com/golang-jwt/jwt/v5"
 	jwtsigner "github.com/salrashid123/golang-jwt-pqc"
@@ -81,7 +80,7 @@ func (k *GCPKMS) GetPublicKey() (*mldsa.PublicKey, error) {
 			return nil, fmt.Errorf("golang-jwt-pqc: error getting public key %v", err)
 		}
 
-		var params *mldsa.Parameters
+		var params mldsa.Parameters
 		switch pk.Algorithm {
 		case kmspb.CryptoKeyVersion_PQ_SIGN_ML_DSA_44:
 			params = mldsa.MLDSA44()

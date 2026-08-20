@@ -6,8 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	//"crypto/mldsa"
-	mldsa "filippo.io/mldsa"
+	"crypto/mldsa"
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/kms"
@@ -94,7 +93,7 @@ func (k *AWSKMS) GetPublicKey() (*mldsa.PublicKey, error) {
 			return nil, fmt.Errorf("golang-jwt-pqc: error signing %v\n", err)
 		}
 
-		var params *mldsa.Parameters
+		var params mldsa.Parameters
 		switch resp.KeySpec {
 		case types.KeySpecMlDsa44:
 			params = mldsa.MLDSA44()

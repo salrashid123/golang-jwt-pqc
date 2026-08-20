@@ -11,8 +11,7 @@ import (
 	"os"
 	"strings"
 
-	//"crypto/mldsa"
-	mldsa "filippo.io/mldsa"
+	"crypto/mldsa"
 
 	"github.com/hashicorp/vault/api"
 	jwtsigner "github.com/salrashid123/golang-jwt-pqc"
@@ -100,7 +99,7 @@ func (k *Vault) GetPublicKey() (*mldsa.PublicKey, error) {
 						return nil, fmt.Errorf("golang-jwt-pqc: Error marshallling public key %v", err)
 					}
 
-					var params *mldsa.Parameters
+					var params mldsa.Parameters
 					var mlAlgo asn1.ObjectIdentifier
 					switch keyType {
 					case "ml-dsa-44":

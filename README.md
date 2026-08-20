@@ -30,9 +30,8 @@ While MLDSA is [NIST approved](https://nvlpubs.nist.gov/nistpubs/fips/nist.fips.
 
 >> This code is NOT supported by google
 
----
 
->> *NOTE* this library internally uses `"filippo.io/mldsa"` as the mlDSA provider which is still under devleopment [https://github.com/golang/go/issues/77626](https://github.com/golang/go/issues/77626).  Eventually when that is merged into standard go  `"crypto/mldsa"`, i'll swap the implementation.  Please note that will be a breaking change since it will migrate the return function parameters from `"filippo.io/mldsa"` --> `crypto/mldsa`.  If you want to see an example with a patched version of upstream golang, see the [go_127](https://github.com/salrashid123/golang-jwt-pqc/tree/go_127) branch in this repo: 
+Please note the latest version of this library requires the `crypto/mldsa` which is standard with `go1.27+`
 
 ---
 
@@ -74,13 +73,6 @@ For other references, see:
 * `ML-DSA-44`
 * `ML-DSA-65`
 * `ML-DSA-87`
-
-TODO:
-
-* `SLH-DSA-SHA2-128s`
-* `SLH-DSA-SHAKE-128s`
-* `SLH-DSA-SHA2-128f`
-
 
 Also, the `alg` field is simply one derived from the draft: [ML-DSA for JOSE and COSE](https://datatracker.ietf.org/doc/draft-ietf-cose-dilithium/) and may change later (since its still draft) and [SLH-DSA for JOSE and COSE](https://datatracker.ietf.org/doc/draft-ietf-cose-sphincs-plus/)
 

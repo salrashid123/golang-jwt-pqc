@@ -1,9 +1,8 @@
 module github.com/salrashid123/golang-jwt-pqc/mldsa
 
-go 1.26
+go 1.27
 
 require (
-	filippo.io/mldsa v0.0.0-20260215214346-43d0283efc3e
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/salrashid123/golang-jwt-pqc v0.0.0
 	github.com/stretchr/testify v1.11.1

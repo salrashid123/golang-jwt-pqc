@@ -7,8 +7,7 @@ import (
 	"errors"
 	"fmt"
 
-	//"crypto/mldsa"
-	mldsa "filippo.io/mldsa"
+	"crypto/mldsa"
 
 	jwt "github.com/golang-jwt/jwt/v5"
 )
@@ -135,7 +134,7 @@ func GetSubjectPublicKeyInfoFromPEM(in []byte) (*mldsa.PublicKey, error) {
 	if err != nil {
 		return &mldsa.PublicKey{}, fmt.Errorf("Error unmarshalling pem key %v", err)
 	}
-	var params *mldsa.Parameters
+	var params mldsa.Parameters
 	if si.Algorithm.Algorithm.Equal(OidMLDSA44) {
 		params = mldsa.MLDSA44()
 	} else if si.Algorithm.Algorithm.Equal(OidMLDSA65) {
@@ -167,7 +166,7 @@ func GetPrivateKeyInfoFromPEM(in []byte) (*mldsa.PrivateKey, error) {
 		return &mldsa.PrivateKey{}, fmt.Errorf("Error unmarshalling pem key %v", err)
 	}
 
-	var params *mldsa.Parameters
+	var params mldsa.Parameters
 
 	if si.PrivateKeyAlgorithm.Algorithm.Equal(OidMLDSA44) {
 		params = mldsa.MLDSA44()

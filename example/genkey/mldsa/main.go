@@ -1,7 +1,7 @@
 package main
 
 import (
-	//"crypto/mldsa"
+	"crypto/mldsa"
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"encoding/pem"
@@ -9,8 +9,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-
-	mldsa "filippo.io/mldsa"
 )
 
 const ()

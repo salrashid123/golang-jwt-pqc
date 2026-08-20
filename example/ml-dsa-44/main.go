@@ -2,8 +2,7 @@ package main
 
 import (
 	"context"
-	//"crypto/mldsa"
-	mldsa "filippo.io/mldsa"
+	"crypto/mldsa"
 
 	"encoding/json"
 	"fmt"

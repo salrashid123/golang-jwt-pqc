@@ -5,8 +5,7 @@ import (
 	"os"
 	"testing"
 
-	//"crypto/mldsa"
-	mldsa "filippo.io/mldsa"
+	"crypto/mldsa"
 
 	"github.com/stretchr/testify/require"
 )

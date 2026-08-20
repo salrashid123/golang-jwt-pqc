@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/mldsa"
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"encoding/base64"
@@ -11,8 +12,6 @@ import (
 	"log"
 	"os"
 	"time"
-
-	"filippo.io/mldsa"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/hashicorp/vault/api"
